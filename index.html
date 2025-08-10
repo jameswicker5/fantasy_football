@@ -212,6 +212,16 @@
       margin: 1rem 0;
     }
     
+    .debug-info {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    
     @media (max-width: 768px) {
       body { padding: 1rem; }
       .container { padding: 1rem; }
@@ -260,6 +270,14 @@
         <div id="leaderboard"></div>
         <p class="muted">Rankings based on total picks submitted this season.</p>
       </section>
+      
+      <!-- Debug section -->
+      <section class="section">
+        <h2>🔧 Debug Info</h2>
+        <div id="debug-info" class="debug-info">
+          Debug information will appear here...
+        </div>
+      </section>
     </div>
   </div>
 
@@ -271,6 +289,17 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
   // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// Debug function
+function updateDebugInfo(message) {
+  const debugEl = document.getElementById('debug-info')
+  if (debugEl) {
+    debugEl.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`
+    debugEl.scrollTop = debugEl.scrollHeight
+  }
+  console.log('DEBUG:', message)
+}
+
 const slots = [
   { key: 'QB', label: 'Quarterback', count: 1 },
   { key: 'RB1', label: 'Running Back #1', count: 1 },
@@ -302,17 +331,21 @@ await initializeApp()
 
 async function initializeApp() {
   try {
+    updateDebugInfo('Initializing app...')
+    
     // Handle URL hash for authentication (magic link redirect)
     if (window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substr(1))
       if (hashParams.get('type') === 'email') {
         authEl.innerHTML = '<div class="status loading">Completing sign-in...</div>'
+        updateDebugInfo('Processing magic link authentication')
         
         // Let Supabase handle the auth
         const { data, error } = await supabase.auth.getSession()
         
         if (error) {
           console.error('Auth error:', error)
+          updateDebugInfo(`Auth error: ${error.message}`)
           authEl.innerHTML = `<div class="status error">Sign-in error: ${error.message}</div>`
           // Clear the hash and reload
           setTimeout(() => {
@@ -320,6 +353,7 @@ async function initializeApp() {
             window.location.reload()
           }, 3000)
         } else if (data.session) {
+          updateDebugInfo('Authentication successful')
           // Clear the hash
           window.history.replaceState(null, null, window.location.pathname)
           currentUser = data.session.user
@@ -330,6 +364,7 @@ async function initializeApp() {
     await refreshAuthUI()
   } catch (error) {
     console.error('Initialization error:', error)
+    updateDebugInfo(`Initialization error: ${error.message}`)
     authEl.innerHTML = '<div class="status error">Error loading app. Please refresh the page.</div>'
   }
 }
@@ -343,10 +378,14 @@ async function getHandle(userId) {
       .eq('user_id', userId)
       .maybeSingle()
     
-    if (error) console.error('Error fetching handle:', error)
+    if (error) {
+      updateDebugInfo(`Error fetching handle for user ${userId}: ${error.message}`)
+      console.error('Error fetching handle:', error)
+    }
     return data?.handle || 'Anonymous Player'
   } catch (error) {
     console.error('Error in getHandle:', error)
+    updateDebugInfo(`Exception in getHandle: ${error.message}`)
     return 'Anonymous Player'
   }
 }
@@ -354,6 +393,7 @@ async function getHandle(userId) {
 // Listen for auth state changes
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log('Auth state changed:', event, session?.user?.email)
+  updateDebugInfo(`Auth state changed: ${event} - ${session?.user?.email || 'no user'}`)
   
   if (event === 'SIGNED_IN') {
     currentUser = session?.user || null
@@ -374,6 +414,7 @@ async function refreshAuthUI() {
     }
     
     if (!currentUser) {
+      updateDebugInfo('No authenticated user, showing login form')
       authEl.innerHTML = `
         <div class="auth-section">
           <div class="auth-form">
@@ -394,6 +435,7 @@ async function refreshAuthUI() {
         const button = document.getElementById('signin')
         button.disabled = true
         button.textContent = 'Sending...'
+        updateDebugInfo(`Sending magic link to: ${email}`)
         
         try {
           // Get the current URL without any hash
@@ -412,9 +454,11 @@ async function refreshAuthUI() {
           
           alert('Check your email for the sign-in link!')
           button.textContent = 'Link Sent!'
+          updateDebugInfo(`Magic link sent successfully to ${email}`)
           
         } catch (error) {
           alert('Error: ' + error.message)
+          updateDebugInfo(`Error sending magic link: ${error.message}`)
           button.disabled = false
           button.textContent = 'Send Magic Link'
         }
@@ -422,6 +466,7 @@ async function refreshAuthUI() {
       
       mainContentEl.style.display = 'none'
     } else {
+      updateDebugInfo(`User authenticated: ${currentUser.email} (ID: ${currentUser.id})`)
       const handle = await getHandle(currentUser.id)
       authEl.innerHTML = `
         <div class="user-info">
@@ -433,6 +478,7 @@ async function refreshAuthUI() {
       `
       
       document.getElementById('signout').onclick = async () => {
+        updateDebugInfo('User signing out')
         await supabase.auth.signOut()
       }
       
@@ -442,24 +488,77 @@ async function refreshAuthUI() {
     }
   } catch (error) {
     console.error('Error in refreshAuthUI:', error)
+    updateDebugInfo(`Error in refreshAuthUI: ${error.message}`)
     authEl.innerHTML = '<p class="error">Error loading authentication. Please refresh the page.</p>'
+  }
+}
+
+// Test database connection
+async function testDatabaseConnection() {
+  updateDebugInfo('Testing database connections...')
+  
+  try {
+    // Test players table
+    const { data: playersTest, error: playersError } = await supabase
+      .from('players')
+      .select('gsis_id, display_name, team, position')
+      .limit(5)
+    
+    if (playersError) {
+      updateDebugInfo(`Players table error: ${playersError.message}`)
+    } else {
+      updateDebugInfo(`Players table OK - found ${playersTest.length} sample records`)
+    }
+    
+    // Test defenses table
+    const { data: defensesTest, error: defensesError } = await supabase
+      .from('defenses')
+      .select('def_id, display_name, team')
+      .limit(5)
+    
+    if (defensesError) {
+      updateDebugInfo(`Defenses table error: ${defensesError.message}`)
+    } else {
+      updateDebugInfo(`Defenses table OK - found ${defensesTest.length} sample records`)
+    }
+    
+    // Test profiles table
+    const { data: profilesTest, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .limit(1)
+    
+    if (profilesError) {
+      updateDebugInfo(`Profiles table error: ${profilesError.message}`)
+    } else {
+      updateDebugInfo(`Profiles table OK`)
+    }
+    
+  } catch (error) {
+    updateDebugInfo(`Database test exception: ${error.message}`)
   }
 }
 
 // Load players by position
 async function loadPlayersByPosition(position) {
   try {
+    updateDebugInfo(`Loading players for position: ${position}`)
+    
     if (playersCache[position]) {
+      updateDebugInfo(`Using cached data for ${position} (${playersCache[position].length} players)`)
       return playersCache[position]
     }
     
     if (position === 'DEF') {
       const { data, error } = await supabase
         .from('defenses')
-        .select('*')
+        .select('def_id, display_name, team')
         .order('def_id')
       
-      if (error) throw error
+      if (error) {
+        updateDebugInfo(`Error loading defenses: ${error.message}`)
+        throw error
+      }
       
       const players = data.map(d => ({
         id: d.def_id,
@@ -468,6 +567,7 @@ async function loadPlayersByPosition(position) {
       }))
       
       playersCache[position] = players
+      updateDebugInfo(`Loaded ${players.length} defenses`)
       return players
     }
     
@@ -480,7 +580,10 @@ async function loadPlayersByPosition(position) {
         .order('team')
         .order('display_name')
       
-      if (error) throw error
+      if (error) {
+        updateDebugInfo(`Error loading FLEX players: ${error.message}`)
+        throw error
+      }
       
       const players = data.map(p => ({
         id: p.gsis_id,
@@ -489,6 +592,7 @@ async function loadPlayersByPosition(position) {
       }))
       
       playersCache[position] = players
+      updateDebugInfo(`Loaded ${players.length} FLEX players`)
       return players
     }
     
@@ -500,7 +604,10 @@ async function loadPlayersByPosition(position) {
       .order('team')
       .order('display_name')
     
-    if (error) throw error
+    if (error) {
+      updateDebugInfo(`Error loading ${position} players: ${error.message}`)
+      throw error
+    }
     
     const players = data.map(p => ({
       id: p.gsis_id,
@@ -509,9 +616,11 @@ async function loadPlayersByPosition(position) {
     }))
     
     playersCache[position] = players
+    updateDebugInfo(`Loaded ${players.length} ${position} players`)
     return players
   } catch (error) {
     console.error(`Error loading players for position ${position}:`, error)
+    updateDebugInfo(`Exception loading ${position}: ${error.message}`)
     return []
   }
 }
@@ -519,7 +628,11 @@ async function loadPlayersByPosition(position) {
 // Build the pick form
 async function buildForm() {
   try {
+    updateDebugInfo('Building pick form...')
     formEl.innerHTML = '<div class="loading">Loading players...</div>'
+    
+    // Test database connection first
+    await testDatabaseConnection()
     
     const slotElements = []
     
@@ -528,7 +641,12 @@ async function buildForm() {
                      slot.key === 'FLEX' ? 'FLEX' : 
                      slot.key.replace(/\d/, '')
       
+      updateDebugInfo(`Building form for slot: ${slot.key} (position: ${position})`)
       const players = await loadPlayersByPosition(position)
+      
+      if (players.length === 0) {
+        updateDebugInfo(`WARNING: No players found for position ${position}`)
+      }
       
       const select = document.createElement('select')
       select.id = `slot-${slot.key}`
@@ -560,24 +678,52 @@ async function buildForm() {
     
     formEl.innerHTML = ''
     slotElements.forEach(el => formEl.appendChild(el))
+    updateDebugInfo('Pick form built successfully')
     
   } catch (error) {
     console.error('Error building form:', error)
+    updateDebugInfo(`Error building form: ${error.message}`)
     formEl.innerHTML = '<div class="error">Error loading form. Please refresh the page.</div>'
   }
 }
 
 // Submit picks
 async function ensureProfile(userId) {
-  const { data: p, error: pe } = await supabase
-    .from('profiles')
-    .select('user_id')
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (pe) console.warn('profiles select error:', pe)
-  if (!p) {
-    const { error: pi } = await supabase.from('profiles').insert({ user_id: userId })
-    if (pi) console.warn('profiles insert error:', pi)
+  try {
+    updateDebugInfo(`Ensuring profile exists for user: ${userId}`)
+    
+    const { data: existingProfile, error: selectError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (selectError) {
+      updateDebugInfo(`Error checking existing profile: ${selectError.message}`)
+      console.warn('profiles select error:', selectError)
+    }
+    
+    if (!existingProfile) {
+      updateDebugInfo('Profile does not exist, creating new profile')
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({ 
+          user_id: userId,
+          handle: `Player${userId.slice(-4)}` // Generate a default handle
+        })
+      
+      if (insertError) {
+        updateDebugInfo(`Error creating profile: ${insertError.message}`)
+        console.warn('profiles insert error:', insertError)
+      } else {
+        updateDebugInfo('Profile created successfully')
+      }
+    } else {
+      updateDebugInfo('Profile already exists')
+    }
+  } catch (error) {
+    updateDebugInfo(`Exception in ensureProfile: ${error.message}`)
+    console.error('Exception in ensureProfile:', error)
   }
 }
 
@@ -590,56 +736,109 @@ submitBtn.onclick = async () => {
   try {
     submitBtn.disabled = true
     submitStatus.innerHTML = '<div class="status loading">Submitting your picks...</div>'
+    updateDebugInfo('=== STARTING PICK SUBMISSION ===')
 
     const season = Number(seasonEl.value)
     const week = Number(weekEl.value)
-    if (!season || !week) throw new Error('Please enter valid season and week')
+    if (!season || !week) {
+      throw new Error('Please enter valid season and week')
+    }
+    
+    updateDebugInfo(`Submitting picks for Season ${season}, Week ${week}`)
+    updateDebugInfo(`User: ${currentUser.email} (ID: ${currentUser.id})`)
+
+    // First, delete any existing picks for this user/season/week
+    updateDebugInfo('Checking for existing picks to delete...')
+    const { data: existingPicks, error: deleteError } = await supabase
+      .from('picks')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('season', season)
+      .eq('week', week)
+      .select()
+    
+    if (deleteError) {
+      updateDebugInfo(`Error deleting existing picks: ${deleteError.message}`)
+    } else {
+      updateDebugInfo(`Deleted ${existingPicks?.length || 0} existing picks`)
+    }
 
     const picks = []
     const used = new Set()
+    
     for (const { key, label } of slots) {
-      const val = (document.getElementById(`slot-${key}`)?.value || '').trim()
-      if (!val) throw new Error(`Please select ${label}`)
+      const element = document.getElementById(`slot-${key}`)
+      const val = (element?.value || '').trim()
       
-      // Enhanced duplicate check
+      updateDebugInfo(`Processing slot ${key} (${label}): value="${val}"`)
+      
+      if (!val) {
+        throw new Error(`Please select ${label}`)
+      }
+      
+      // Enhanced duplicate check (only for non-FLEX positions)
       if (key !== 'FLEX') {
-        if (used.has(val)) throw new Error(`Duplicate player in non-FLEX slot: ${label}`)
+        if (used.has(val)) {
+          throw new Error(`Duplicate player selected: ${label}`)
+        }
         used.add(val)
       }
       
-      picks.push({
+      // Create the pick object based on the database schema
+      const pick = {
         user_id: currentUser.id,
-        season,
-        week,
-        slot: key,
-        gsis_id: key === 'DEF' ? null : val,
-        def_id: key === 'DEF' ? val : null
-      })
+        season: season,
+        week: week,
+        slot: key
+      }
+      
+      // Set either gsis_id or def_id based on position
+      if (key === 'DEF') {
+        pick.def_id = val
+        pick.gsis_id = null
+      } else {
+        pick.gsis_id = val
+        pick.def_id = null
+      }
+      
+      picks.push(pick)
+      updateDebugInfo(`Added pick: ${JSON.stringify(pick)}`)
     }
 
+    updateDebugInfo(`Total picks to submit: ${picks.length}`)
+
+    // Ensure profile exists
     await ensureProfile(currentUser.id)
 
-    console.log('Submitting picks:', picks)  // Detailed logging
-
-    const { data, error } = await supabase
+    // Submit the picks
+    updateDebugInfo('Submitting picks to database...')
+    const { data: insertedPicks, error: insertError } = await supabase
       .from('picks')
       .insert(picks)
       .select()
 
-    if (error) {
-      console.error('Detailed picks insert error:', {
-        message: error.message,
-        details: error.details,
-        code: error.code
-      })
-      submitStatus.innerHTML = `<div class="status error">❌ ${error.message} ${error.details || ''}</div>`
+    if (insertError) {
+      updateDebugInfo(`Detailed picks insert error: ${JSON.stringify({
+        message: insertError.message,
+        details: insertError.details,
+        code: insertError.code,
+        hint: insertError.hint
+      })}`)
+      
+      console.error('Detailed picks insert error:', insertError)
+      submitStatus.innerHTML = `<div class="status error">❌ ${insertError.message} ${insertError.details || ''}</div>`
       return
     }
 
-    submitStatus.innerHTML = '<div class="status success">✅ Picks submitted!</div>'
+    updateDebugInfo(`Successfully inserted ${insertedPicks?.length || 0} picks`)
+    updateDebugInfo('=== PICK SUBMISSION COMPLETE ===')
+    
+    submitStatus.innerHTML = '<div class="status success">✅ Picks submitted successfully!</div>'
     await loadLeaderboard()
+    
   } catch (e) {
     console.error('Comprehensive submit error:', e)
+    updateDebugInfo(`ERROR in submission: ${e.message}`)
     submitStatus.innerHTML = `<div class="status error">❌ ${e.message}</div>`
   } finally {
     submitBtn.disabled = false
@@ -649,6 +848,7 @@ submitBtn.onclick = async () => {
 // Load leaderboard
 async function loadLeaderboard() {
   try {
+    updateDebugInfo('Loading leaderboard...')
     const season = Number(seasonEl.value)
     
     const { data, error } = await supabase
@@ -656,7 +856,12 @@ async function loadLeaderboard() {
       .select('user_id, season')
       .eq('season', season)
     
-    if (error) throw error
+    if (error) {
+      updateDebugInfo(`Error loading leaderboard: ${error.message}`)
+      throw error
+    }
+    
+    updateDebugInfo(`Found ${data.length} total picks for season ${season}`)
     
     // Count picks per user
     const userCounts = {}
@@ -668,12 +873,14 @@ async function loadLeaderboard() {
     const sortedUsers = Object.entries(userCounts)
       .sort(([,a], [,b]) => b - a)
     
+    updateDebugInfo(`Leaderboard has ${sortedUsers.length} users`)
+    
     if (sortedUsers.length === 0) {
       leaderboardEl.innerHTML = '<p class="muted">No picks submitted yet for this season.</p>'
       return
     }
     
-    // Get handles for users (simplified for demo)
+    // Get handles for users
     const leaderboardItems = await Promise.all(
       sortedUsers.map(async ([userId, count], index) => {
         const handle = await getHandle(userId)
@@ -689,18 +896,24 @@ async function loadLeaderboard() {
     )
     
     leaderboardEl.innerHTML = `<div class="leaderboard-list">${leaderboardItems.join('')}</div>`
+    updateDebugInfo('Leaderboard loaded successfully')
     
   } catch (error) {
     console.error('Error loading leaderboard:', error)
+    updateDebugInfo(`Error loading leaderboard: ${error.message}`)
     leaderboardEl.innerHTML = '<p class="error">Error loading leaderboard</p>'
   }
 }
 
 // Season/Week change handlers
-seasonEl.addEventListener('change', loadLeaderboard)
+seasonEl.addEventListener('change', () => {
+  updateDebugInfo(`Season changed to: ${seasonEl.value}`)
+  loadLeaderboard()
+})
+
 weekEl.addEventListener('change', () => {
+  updateDebugInfo(`Week changed to: ${weekEl.value}`)
   // Could load existing picks for the week here
-  console.log('Week changed to:', weekEl.value)
 })
 
 </script>
