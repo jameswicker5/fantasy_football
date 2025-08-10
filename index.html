@@ -298,7 +298,41 @@ let currentUser = null
 let playersCache = {}
 
 // Initialize the app
-await refreshAuthUI()
+await initializeApp()
+
+async function initializeApp() {
+  try {
+    // Handle URL hash for authentication (magic link redirect)
+    if (window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substr(1))
+      if (hashParams.get('type') === 'email') {
+        authEl.innerHTML = '<div class="status loading">Completing sign-in...</div>'
+        
+        // Let Supabase handle the auth
+        const { data, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Auth error:', error)
+          authEl.innerHTML = `<div class="status error">Sign-in error: ${error.message}</div>`
+          // Clear the hash and reload
+          setTimeout(() => {
+            window.location.hash = ''
+            window.location.reload()
+          }, 3000)
+        } else if (data.session) {
+          // Clear the hash
+          window.history.replaceState(null, null, window.location.pathname)
+          currentUser = data.session.user
+        }
+      }
+    }
+    
+    await refreshAuthUI()
+  } catch (error) {
+    console.error('Initialization error:', error)
+    authEl.innerHTML = '<div class="status error">Error loading app. Please refresh the page.</div>'
+  }
+}
 
 // Helper to get user handle
 async function getHandle(userId) {
@@ -318,21 +352,26 @@ async function getHandle(userId) {
 }
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth state changed:', event, session?.user?.email)
+  
   if (event === 'SIGNED_IN') {
     currentUser = session?.user || null
-    refreshAuthUI()
+    await refreshAuthUI()
   } else if (event === 'SIGNED_OUT') {
     currentUser = null
-    refreshAuthUI()
+    await refreshAuthUI()
   }
 })
 
 // Auth UI Management
 async function refreshAuthUI() {
   try {
-    const { data } = await supabase.auth.getUser()
-    currentUser = data.user
+    // Get current session if we don't have currentUser set
+    if (!currentUser) {
+      const { data } = await supabase.auth.getUser()
+      currentUser = data.user
+    }
     
     if (!currentUser) {
       authEl.innerHTML = `
@@ -357,10 +396,13 @@ async function refreshAuthUI() {
         button.textContent = 'Sending...'
         
         try {
+          // Get the current URL without any hash
+          const redirectUrl = window.location.origin + window.location.pathname
+          
           const { error } = await supabase.auth.signInWithOtp({ 
             email,
             options: {
-              emailRedirectTo: window.location.origin
+              emailRedirectTo: redirectUrl
             }
           })
           
