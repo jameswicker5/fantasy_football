@@ -568,80 +568,70 @@ async function buildForm() {
 }
 
 // Submit picks
-submitBtn.onclick = async () => {
-  if (!currentUser) {
-    alert('Please sign in first')
-    return
+async function ensureProfile(userId) {
+  const { data: p, error: pe } = await supabase
+    .from('profiles')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (pe) console.warn('profiles select error:', pe)
+  if (!p) {
+    const { error: pi } = await supabase.from('profiles').insert({ user_id: userId })
+    if (pi) console.warn('profiles insert error:', pi)
   }
-  
+}
+
+submitBtn.onclick = async () => {
+  if (!currentUser) { alert('Please sign in first'); return }
+
   try {
     submitBtn.disabled = true
     submitStatus.innerHTML = '<div class="status loading">Submitting your picks...</div>'
-    
+
     const season = Number(seasonEl.value)
     const week = Number(weekEl.value)
-    
-    if (!season || !week) {
-      throw new Error('Please enter valid season and week numbers')
-    }
-    
+    if (!season || !week) throw new Error('Please enter valid season and week')
+
+    // Build payload
     const picks = []
-    const usedPlayers = new Set()
-    const flexUsedPlayers = new Set()
-    
-    // Validate and collect picks
-    for (const slot of slots) {
-      const selectEl = document.getElementById(`slot-${slot.key}`)
-      const value = selectEl.value.trim()
-      
-      if (!value) {
-        throw new Error(`Please select a ${slot.label}`)
+    const used = new Set()
+    for (const { key, label } of slots) {
+      const val = (document.getElementById(`slot-${key}`)?.value || '').trim()
+      if (!val) throw new Error(`Please select ${label}`)
+      if (key !== 'FLEX') {
+        if (used.has(val)) throw new Error('Duplicate player in non-FLEX slot')
+        used.add(val)
       }
-      
-      // Check for duplicates (except FLEX can reuse RB/WR/TE that aren't in starting lineup)
-      if (slot.key !== 'FLEX') {
-        if (usedPlayers.has(value)) {
-          throw new Error(`You cannot use the same player in multiple non-flex positions`)
-        }
-        usedPlayers.add(value)
-        
-        // If this is a RB/WR/TE, also mark as unavailable for FLEX
-        const position = slot.key.replace(/\d/, '')
-        if (flexPositions.has(position)) {
-          flexUsedPlayers.add(value)
-        }
-      } else {
-        // FLEX position - cannot reuse players already selected
-        if (flexUsedPlayers.has(value)) {
-          throw new Error(`FLEX player is already used in another starting position`)
-        }
-      }
-      
-      const pick = {
+      picks.push({
         user_id: currentUser.id,
         season,
         week,
-        slot: slot.key,
-        gsis_id: slot.key === 'DEF' ? null : value,
-        def_id: slot.key === 'DEF' ? value : null
-      }
-      
-      picks.push(pick)
+        slot: key,
+        gsis_id: key === 'DEF' ? null : val,
+        def_id:  key === 'DEF' ? val  : null
+      })
     }
-    
-    // Submit to database
-    const { error } = await supabase.from('picks').insert(picks)
-    
+
+    // Make sure FK target exists
+    await ensureProfile(currentUser.id)
+
+    // Force Supabase to return immediately with either data or an error
+    const { data, error } = await supabase
+      .from('picks')
+      .insert(picks)
+      .select()              // ensures a round-trip; helpful for RLS errors
+
     if (error) {
-      throw error
+      console.error('picks insert error:', error)
+      submitStatus.innerHTML = `<div class="status error">❌ ${error.message}</div>`
+      return
     }
-    
-    submitStatus.innerHTML = '<div class="status success">✅ Picks submitted successfully!</div>'
+
+    submitStatus.innerHTML = '<div class="status success">✅ Picks submitted!</div>'
     await loadLeaderboard()
-    
-  } catch (error) {
-    console.error('Error submitting picks:', error)
-    submitStatus.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`
+  } catch (e) {
+    console.error('submit error:', e)
+    submitStatus.innerHTML = `<div class="status error">❌ ${e.message}</div>`
   } finally {
     submitBtn.disabled = false
   }
