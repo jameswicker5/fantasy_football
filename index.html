@@ -264,100 +264,13 @@
   </div>
 
 <script type="module">
-// Replace with your actual Supabase credentials
+  // Import Supabase
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL = 'https://sbwcvlcherhybyzdbzka.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNid2N2bGNoZXJoeWJ5emRiemthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NjEyNjksImV4cCI6MjA3MDMzNzI2OX0.zQg2YemO6TbFKRYlVfaIUdRzPVHn7kLnNQY1hoaitQs'
 
-// Mock Supabase client for demonstration
-const mockSupabase = {
-  auth: {
-    getUser: async () => ({ data: { user: null } }),
-    signInWithOtp: async ({ email }) => {
-      // Simulate email verification
-      localStorage.setItem('mockUser', JSON.stringify({ id: 'mock-user-' + Date.now(), email }))
-      return { error: null }
-    },
-    signOut: async () => {
-      localStorage.removeItem('mockUser')
-      return { error: null }
-    }
-  },
-  from: (table) => ({
-    select: function(columns) {
-      return {
-        eq: () => this,
-        in: () => this,
-        order: () => this,
-        maybeSingle: async () => {
-          if (table === 'profiles') {
-            return { data: { handle: 'Player123' }, error: null }
-          }
-          return { data: null, error: null }
-        },
-        then: async (resolve) => {
-          // Mock data based on table
-          if (table === 'players') {
-            resolve({ 
-              data: this.generateMockPlayers(), 
-              error: null 
-            })
-          } else if (table === 'defenses') {
-            resolve({ 
-              data: this.generateMockDefenses(), 
-              error: null 
-            })
-          } else if (table === 'picks') {
-            resolve({ 
-              data: this.generateMockPicks(), 
-              error: null 
-            })
-          } else {
-            resolve({ data: [], error: null })
-          }
-        },
-        generateMockPlayers: function() {
-          const positions = { QB: 5, RB: 8, WR: 10, TE: 4, K: 4 }
-          const teams = ['KC', 'BUF', 'SF', 'DAL', 'GB', 'MIA', 'CIN', 'PHI']
-          const players = []
-          
-          Object.entries(positions).forEach(([pos, count]) => {
-            for (let i = 1; i <= count; i++) {
-              players.push({
-                gsis_id: `${pos}${i}_mock`,
-                display_name: `${pos} Player ${i}`,
-                team: teams[i % teams.length],
-                position: pos
-              })
-            }
-          })
-          return players
-        },
-        generateMockDefenses: function() {
-          const teams = ['KC', 'BUF', 'SF', 'DAL', 'GB', 'MIA', 'CIN', 'PHI', 'BAL', 'LAR']
-          return teams.map((team, i) => ({
-            def_id: `${team}_DEF`,
-            display_name: `${team} Defense`
-          }))
-        },
-        generateMockPicks: function() {
-          return [
-            { user_id: 'user1', season: 2025 },
-            { user_id: 'user2', season: 2025 },
-            { user_id: 'user1', season: 2025 }
-          ]
-        }
-      }
-    },
-    insert: async (data) => {
-      console.log('Mock insert:', data)
-      return { error: null }
-    }
-  })
-}
-
-// Use mock for demo, replace with real Supabase client
-const supabase = mockSupabase
-
+  // Initialize Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 const slots = [
   { key: 'QB', label: 'Quarterback', count: 1 },
   { key: 'RB1', label: 'Running Back #1', count: 1 },
@@ -404,17 +317,22 @@ async function getHandle(userId) {
   }
 }
 
-// Check for mock user in localStorage (for demo purposes)
-function getMockUser() {
-  const mockUser = localStorage.getItem('mockUser')
-  return mockUser ? JSON.parse(mockUser) : null
-}
+// Listen for auth state changes
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    currentUser = session?.user || null
+    refreshAuthUI()
+  } else if (event === 'SIGNED_OUT') {
+    currentUser = null
+    refreshAuthUI()
+  }
+})
 
 // Auth UI Management
 async function refreshAuthUI() {
   try {
     const { data } = await supabase.auth.getUser()
-    currentUser = data.user || getMockUser()
+    currentUser = data.user
     
     if (!currentUser) {
       authEl.innerHTML = `
@@ -422,7 +340,7 @@ async function refreshAuthUI() {
           <div class="auth-form">
             <input id="email" type="email" placeholder="Enter your email address" style="min-width: 280px;" />
             <button id="signin" type="button">Send Magic Link</button>
-            <p class="muted">For demo purposes, any email will work!</p>
+            <p class="muted">We'll send you a secure sign-in link via email</p>
           </div>
         </div>
       `
@@ -434,15 +352,29 @@ async function refreshAuthUI() {
           return
         }
         
-        const { error } = await supabase.auth.signInWithOtp({ email })
-        if (error) {
+        const button = document.getElementById('signin')
+        button.disabled = true
+        button.textContent = 'Sending...'
+        
+        try {
+          const { error } = await supabase.auth.signInWithOtp({ 
+            email,
+            options: {
+              emailRedirectTo: window.location.origin
+            }
+          })
+          
+          if (error) {
+            throw error
+          }
+          
+          alert('Check your email for the sign-in link!')
+          button.textContent = 'Link Sent!'
+          
+        } catch (error) {
           alert('Error: ' + error.message)
-        } else {
-          alert('Check your email for the sign-in link! (For demo, you\'re now logged in)')
-          // Auto-login for demo
-          setTimeout(() => {
-            location.reload()
-          }, 1000)
+          button.disabled = false
+          button.textContent = 'Send Magic Link'
         }
       }
       
@@ -460,7 +392,6 @@ async function refreshAuthUI() {
       
       document.getElementById('signout').onclick = async () => {
         await supabase.auth.signOut()
-        location.reload()
       }
       
       mainContentEl.style.display = 'block'
