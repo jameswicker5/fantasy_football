@@ -582,7 +582,10 @@ async function ensureProfile(userId) {
 }
 
 submitBtn.onclick = async () => {
-  if (!currentUser) { alert('Please sign in first'); return }
+  if (!currentUser) { 
+    alert('Please sign in first'); 
+    return 
+  }
 
   try {
     submitBtn.disabled = true
@@ -592,45 +595,51 @@ submitBtn.onclick = async () => {
     const week = Number(weekEl.value)
     if (!season || !week) throw new Error('Please enter valid season and week')
 
-    // Build payload
     const picks = []
     const used = new Set()
     for (const { key, label } of slots) {
       const val = (document.getElementById(`slot-${key}`)?.value || '').trim()
       if (!val) throw new Error(`Please select ${label}`)
+      
+      // Enhanced duplicate check
       if (key !== 'FLEX') {
-        if (used.has(val)) throw new Error('Duplicate player in non-FLEX slot')
+        if (used.has(val)) throw new Error(`Duplicate player in non-FLEX slot: ${label}`)
         used.add(val)
       }
+      
       picks.push({
         user_id: currentUser.id,
         season,
         week,
         slot: key,
         gsis_id: key === 'DEF' ? null : val,
-        def_id:  key === 'DEF' ? val  : null
+        def_id: key === 'DEF' ? val : null
       })
     }
 
-    // Make sure FK target exists
     await ensureProfile(currentUser.id)
 
-    // Force Supabase to return immediately with either data or an error
+    console.log('Submitting picks:', picks)  // Detailed logging
+
     const { data, error } = await supabase
       .from('picks')
       .insert(picks)
-      .select()              // ensures a round-trip; helpful for RLS errors
+      .select()
 
     if (error) {
-      console.error('picks insert error:', error)
-      submitStatus.innerHTML = `<div class="status error">❌ ${error.message}</div>`
+      console.error('Detailed picks insert error:', {
+        message: error.message,
+        details: error.details,
+        code: error.code
+      })
+      submitStatus.innerHTML = `<div class="status error">❌ ${error.message} ${error.details || ''}</div>`
       return
     }
 
     submitStatus.innerHTML = '<div class="status success">✅ Picks submitted!</div>'
     await loadLeaderboard()
   } catch (e) {
-    console.error('submit error:', e)
+    console.error('Comprehensive submit error:', e)
     submitStatus.innerHTML = `<div class="status error">❌ ${e.message}</div>`
   } finally {
     submitBtn.disabled = false
