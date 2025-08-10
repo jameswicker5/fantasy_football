@@ -8,11 +8,13 @@
     body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 900px; }
     header, section { margin-bottom: 1.5rem; }
     label { display:block; margin-top: .5rem; }
-    select, input, button { padding:.5rem; margin:.25rem 0; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    input, select, button { padding:.5rem; margin:.25rem 0; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:.5rem; }
     .card { border:1px solid #ddd; border-radius:10px; padding:1rem; }
     .muted { color:#666; font-size:.9rem; }
+    .error { color:#b00020; }
+    .ok { color:#0a7a0a; }
   </style>
 </head>
 <body>
@@ -34,31 +36,58 @@
     </div>
   </div>
 
-  <p class="muted">Only active players & teams playing this week should appear (filter on client with your CSVs if you want; this MVP pulls from DB as-is).</p>
+  <p class="muted">
+    Only active players &amp; teams playing this week should appear (filter on client later; this MVP pulls from DB as-is).
+  </p>
 
-  <div id="pick-form" class="grid">
-    <!-- slots will be injected -->
-  </div>
+  <div id="pick-form" class="grid"><!-- slots injected --></div>
   <button id="submit">Submit Picks</button>
   <div id="submit-status"></div>
 </section>
 
 <section class="card">
-  <h2>Leaderboard (total picks count as placeholder)</h2>
+  <h2>Leaderboard (placeholder)</h2>
   <div id="leaderboard"></div>
-  <p class="muted">Replace this with real points once you add the scoring job.</p>
+  <p class="muted">Replace with real points once you add the scoring job.</p>
 </section>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+/** =========================
+ *  Supabase config
+ *  ========================= */
 const SUPABASE_URL = 'https://sbwcvlcherhybyzdbzka.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNid2N2bGNoZXJoeWJ5emRiemthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NjEyNjksImV4cCI6MjA3MDMzNzI2OX0.zQg2YemO6TbFKRYlVfaIUdRzPVHn7kLnNQY1hoaitQs'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-const slots = ['QB','RB1','RB2','WR1','WR2','TE','FLEX','K','DEF']
-const flexPositions = new Set(['RB','WR','TE'])
+/** =========================
+ *  AUTHORIZATION SETTINGS
+ *  Edit these to restrict who can sign up
+ *  ========================= */
+const ALLOWLIST_EMAILS = [
+  // 'jameswicker555@gmail.com','friend2@example.com'
+]
+const ALLOWLIST_DOMAINS = [
+  // 'gmail.com','yourwork.com'
+]
 
+// Helpers to check allowlist
+function isEmailAllowed(email) {
+  if (!email) return false
+  const lower = email.toLowerCase()
+  if (ALLOWLIST_EMAILS.length && ALLOWLIST_EMAILS.map(e=>e.toLowerCase()).includes(lower)) return true
+  if (ALLOWLIST_DOMAINS.length) {
+    const domain = lower.split('@')[1] || ''
+    if (ALLOWLIST_DOMAINS.map(d=>d.toLowerCase()).includes(domain)) return true
+  }
+  // If both lists are empty, allow everyone
+  return (ALLOWLIST_EMAILS.length === 0 && ALLOWLIST_DOMAINS.length === 0)
+}
+
+/** =========================
+ *  DOM refs
+ *  ========================= */
 const authEl = document.getElementById('auth')
 const formEl = document.getElementById('pick-form')
 const submitBtn = document.getElementById('submit')
@@ -67,65 +96,133 @@ const seasonEl = document.getElementById('season')
 const weekEl = document.getElementById('week')
 const leaderboardEl = document.getElementById('leaderboard')
 
+const slots = ['QB','RB1','RB2','WR1','WR2','TE','FLEX','K','DEF']
 let currentUser = null
-await refreshAuthUI()
 
-// -------- Auth -----------
-async function refreshAuthUI() {
-  const { data } = await supabase.auth.getUser()
-  currentUser = data.user
-  if (!currentUser) {
-    authEl.innerHTML = `
-      <input id="email" type="email" placeholder="you@example.com" />
-      <button id="signin">Send magic link</button>
-    `
-    document.getElementById('signin').onclick = async () => {
-      const email = document.getElementById('email').value
-      const { error } = await supabase.auth.signInWithOtp({ email })
-      alert(error ? error.message : 'Check your email for the sign-in link.')
-    }
-  } else {
-    authEl.innerHTML = `
-      <span>Signed in as ${currentUser.email}</span>
-      <button id="signout">Sign out</button>
-    `
-    document.getElementById('signout').onclick = async () => {
-      await supabase.auth.signOut()
-      location.reload()
-    }
-    buildForm()
-    loadLeaderboard()
+/** =========================
+ *  Handle magic-link return
+ *  (PKCE flow with code in URL)
+ *  ========================= */
+const url = new URL(window.location.href)
+if (url.searchParams.get('code')) {
+  const { error } = await supabase.auth.exchangeCodeForSession(window.location.href)
+  if (!error) {
+    // clean the URL
+    window.history.replaceState({}, document.title, window.location.pathname)
   }
 }
 
-// -------- Data loaders -----
+/** keep UI in sync with auth changes */
+supabase.auth.onAuthStateChange(async (_event, _session) => {
+  await refreshAuthUI()
+})
+
+await refreshAuthUI()
+
+/** =========================
+ *  AUTH UI
+ *  ========================= */
+async function refreshAuthUI() {
+  const { data: { user } } = await supabase.auth.getUser()
+  currentUser = user
+
+  if (!currentUser) {
+    authEl.innerHTML = `
+      <div class="card">
+        <h3>Sign in</h3>
+        <label>Email</label>
+        <input id="email" type="email" placeholder="you@example.com" />
+        <label>Handle (shown on leaderboard)</label>
+        <input id="handle" type="text" placeholder="e.g., Jojo" />
+        <button id="signin">Send magic link</button>
+        <div id="auth-msg" class="muted"></div>
+      </div>
+    `
+    document.getElementById('signin').onclick = async () => {
+      const email = document.getElementById('email').value.trim()
+      const handle = document.getElementById('handle').value.trim()
+      const msg = document.getElementById('auth-msg')
+
+      if (!isEmailAllowed(email)) {
+        msg.innerHTML = `<span class="error">This email is not authorized for sign-up.</span>`
+        return
+      }
+      if (!handle) {
+        msg.innerHTML = `<span class="error">Please enter a handle.</span>`
+        return
+      }
+
+      // stash handle in localStorage; we’ll upsert profile after sign-in
+      localStorage.setItem('pending_handle', handle)
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.href  // redirect back to this page
+        }
+      })
+      msg.innerHTML = error
+        ? `<span class="error">${error.message}</span>`
+        : `<span class="ok">Magic link sent. Check your inbox.</span>`
+    }
+    return
+  }
+
+  // Signed in — ensure profile exists (upsert)
+  const pendingHandle = localStorage.getItem('pending_handle') || ''
+  if (pendingHandle) {
+    await supabase.from('profiles').upsert({ user_id: currentUser.id, handle: pendingHandle })
+    localStorage.removeItem('pending_handle')
+  } else {
+    // if profile row doesn’t exist yet, create a minimal one
+    await supabase.from('profiles').upsert({ user_id: currentUser.id })
+  }
+
+  authEl.innerHTML = `
+    <span>Signed in as ${currentUser.email}</span>
+    <button id="signout">Sign out</button>
+  `
+  document.getElementById('signout').onclick = async () => {
+    await supabase.auth.signOut()
+    location.reload()
+  }
+
+  // proceed to app UI
+  buildForm()
+  loadLeaderboard()
+}
+
+/** =========================
+ *  DATA LOADERS
+ *  ========================= */
 async function loadPlayersByPosition(pos) {
-  // DEF is separate table
   if (pos === 'DEF') {
     const { data, error } = await supabase.from('defenses').select('*').order('def_id')
     if (error) throw error
     return data.map(d => ({ id: d.def_id, label: d.display_name, pos: 'DEF' }))
   }
-  // players by position
-  const { data, error } = await supabase.from('players')
-    .select('gsis_id, display_name, team, position')
-    .eq('position', pos === 'FLEX' ? null : pos)  // FLEX handled below
-    .order('team', { ascending: true })
-    .order('display_name', { ascending: true })
-  if (error) throw error
+
   if (pos === 'FLEX') {
-    // load RB/WR/TE
-    const { data: rbwrte, error: e2 } = await supabase.from('players')
+    const { data, error } = await supabase.from('players')
       .select('gsis_id, display_name, team, position')
       .in('position', ['RB','WR','TE'])
       .order('position').order('team').order('display_name')
-    if (e2) throw e2
-    return rbwrte.map(p => ({ id: p.gsis_id, label: `${p.display_name} (${p.team} ${p.position})`, pos: p.position }))
+    if (error) throw error
+    return data.map(p => ({ id: p.gsis_id, label: `${p.display_name} (${p.team} ${p.position})`, pos: p.position }))
   }
+
+  const { data, error } = await supabase.from('players')
+    .select('gsis_id, display_name, team, position')
+    .eq('position', pos)
+    .order('team', { ascending: true })
+    .order('display_name', { ascending: true })
+  if (error) throw error
   return data.map(p => ({ id: p.gsis_id, label: `${p.display_name} (${p.team})`, pos: p.position }))
 }
 
-// -------- Form -------------
+/** =========================
+ *  FORM
+ *  ========================= */
 async function buildForm() {
   formEl.innerHTML = ''
   for (const slot of slots) {
@@ -133,6 +230,7 @@ async function buildForm() {
     select.id = `slot-${slot}`
     select.innerHTML = `<option value="">-- choose ${slot} --</option>`
     const pos = slot === 'DEF' ? 'DEF' : (slot === 'FLEX' ? 'FLEX' : slot.replace(/\d/,''))
+
     const options = await loadPlayersByPosition(pos)
     for (const o of options) {
       const opt = document.createElement('option')
@@ -140,6 +238,7 @@ async function buildForm() {
       opt.textContent = o.label
       select.appendChild(opt)
     }
+
     const wrapper = document.createElement('div')
     wrapper.innerHTML = `<label>${slot}</label>`
     wrapper.appendChild(select)
@@ -147,57 +246,49 @@ async function buildForm() {
   }
 }
 
-submitBtn.onclick = async () => {
+document.getElementById('submit').onclick = async () => {
   if (!currentUser) return alert('Sign in first')
   submitStatus.textContent = 'Submitting...'
   const season = Number(seasonEl.value)
   const week = Number(weekEl.value)
 
-  // collect selections
   const payloads = []
   for (const slot of slots) {
     const val = document.getElementById(`slot-${slot}`).value
-    if (!val) return submitStatus.textContent = `Missing selection for ${slot}`
-    if (slot === 'DEF') {
-      payloads.push({ user_id: currentUser.id, season, week, slot, def_id: val, gsis_id: null })
-    } else {
-      payloads.push({ user_id: currentUser.id, season, week, slot, gsis_id: val, def_id: null })
-    }
+    if (!val) { submitStatus.textContent = `Missing selection for ${slot}`; return }
+    if (slot === 'DEF') payloads.push({ user_id: currentUser.id, season, week, slot, def_id: val, gsis_id: null })
+    else payloads.push({ user_id: currentUser.id, season, week, slot, gsis_id: val, def_id: null })
   }
 
-  // simple client-side duplicate check (no-reuse enforced in DB too)
-  const used = new Set()
+  // simple duplicate guard on client; DB has constraints too
+  const seen = new Set()
   for (const p of payloads) {
     const id = p.gsis_id || p.def_id
-    if (used.has(id) && p.slot !== 'FLEX') return submitStatus.textContent = 'Duplicate player selected'
-    used.add(id)
+    if (seen.has(id) && p.slot !== 'FLEX') { submitStatus.textContent = 'Duplicate player selected'; return }
+    seen.add(id)
   }
 
-  // insert (one per slot). If a row exists (resubmission), you can switch to upsert.
   const { error } = await supabase.from('picks').insert(payloads)
-  if (error) {
-    submitStatus.textContent = error.message
-  } else {
-    submitStatus.textContent = 'Saved!'
-    await loadLeaderboard()
-  }
+  submitStatus.textContent = error ? error.message : 'Saved!'
+  if (!error) await loadLeaderboard()
 }
 
-// -------- Leaderboard (placeholder: count picks) ----------
+/** =========================
+ *  LEADERBOARD (placeholder)
+ *  ========================= */
 async function loadLeaderboard() {
   const season = Number(seasonEl.value)
-  // until you add scoring, just count picks per user as a sanity check
   const { data, error } = await supabase
     .from('picks')
     .select('user_id, season', { count: 'exact', head: false })
     .eq('season', season)
   if (error) { leaderboardEl.textContent = error.message; return }
-
   const counts = {}
   for (const row of data) counts[row.user_id] = (counts[row.user_id] || 0) + 1
-  const items = Object.entries(counts).map(([user, c]) => `<li>${user.slice(0,8)}… — ${c} picks</li>`)
-  leaderboardEl.innerHTML = `<ul>${items.join('')}</ul>`
+  leaderboardEl.innerHTML = '<ul>' + Object.entries(counts)
+    .map(([u,c]) => `<li>${u.slice(0,8)}… — ${c} picks</li>`).join('') + '</ul>'
 }
 </script>
 </body>
 </html>
+
