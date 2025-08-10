@@ -5,61 +5,375 @@
   <title>NFL Weekly Picks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 900px; }
-    header, section { margin-bottom: 1.5rem; }
-    label { display:block; margin-top: .5rem; }
-    select, input, button { padding:.5rem; margin:.25rem 0; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
-    .card { border:1px solid #ddd; border-radius:10px; padding:1rem; }
-    .muted { color:#666; font-size:.9rem; }
+    * { box-sizing: border-box; }
+    body { 
+      font-family: system-ui, sans-serif; 
+      margin: 0; 
+      padding: 2rem; 
+      max-width: 1200px; 
+      margin: 0 auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    
+    header { 
+      text-align: center;
+      margin-bottom: 2rem; 
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 1rem;
+    }
+    
+    h1 { 
+      color: #2d3748; 
+      font-size: 2.5rem; 
+      margin: 0;
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .section { 
+      margin-bottom: 2rem; 
+      background: #f8fafc;
+      border-radius: 15px;
+      padding: 1.5rem;
+    }
+    
+    .auth-section {
+      text-align: center;
+      background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    }
+    
+    .auth-form {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+    
+    .user-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    
+    label { 
+      display: block; 
+      margin-bottom: 0.5rem; 
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    select, input, button { 
+      padding: 0.75rem; 
+      margin: 0.25rem 0; 
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.2s ease;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    button:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .week-controls { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 1rem; 
+      margin-bottom: 1.5rem;
+    }
+    
+    .picks-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+      gap: 1rem; 
+      margin-bottom: 1.5rem;
+    }
+    
+    .pick-slot {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .pick-slot:hover {
+      border-color: #667eea;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+    }
+    
+    .pick-slot select {
+      width: 100%;
+      margin: 0;
+    }
+    
+    .position-label {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .submit-section {
+      text-align: center;
+    }
+    
+    .submit-btn {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      min-width: 200px;
+    }
+    
+    .status {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .status.loading {
+      background: #cce7ff;
+      color: #004085;
+      border: 1px solid #b3d7ff;
+    }
+    
+    .leaderboard-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .leaderboard-item:nth-child(1) { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); }
+    .leaderboard-item:nth-child(2) { background: linear-gradient(135deg, #c0c0c0 0%, #e2e8f0 100%); }
+    .leaderboard-item:nth-child(3) { background: linear-gradient(135deg, #cd7f32 0%, #d69e2e 100%); }
+    
+    .muted { 
+      color: #718096; 
+      font-size: 0.9rem; 
+      font-style: italic;
+      text-align: center;
+      margin: 1rem 0;
+    }
+    
+    @media (max-width: 768px) {
+      body { padding: 1rem; }
+      .container { padding: 1rem; }
+      h1 { font-size: 2rem; }
+      .week-controls { grid-template-columns: 1fr; }
+      .picks-grid { grid-template-columns: 1fr; }
+      .user-info { justify-content: center; text-align: center; }
+    }
   </style>
 </head>
 <body>
-<header>
-  <h1>NFL Weekly Picks</h1>
-  <div id="auth"></div>
-</header>
+  <div class="container">
+    <header>
+      <h1>🏈 NFL Weekly Picks</h1>
+      <div id="auth"></div>
+    </header>
 
-<section class="card">
-  <h2>Make Picks</h2>
-  <div class="row">
-    <div>
-      <label>Season</label>
-      <input id="season" type="number" value="2025" />
-    </div>
-    <div>
-      <label>Week</label>
-      <input id="week" type="number" value="1" />
+    <div id="main-content" style="display: none;">
+      <section class="section">
+        <h2>📋 Make Your Picks</h2>
+        <div class="week-controls">
+          <div>
+            <label>Season</label>
+            <input id="season" type="number" value="2025" min="2020" max="2030" />
+          </div>
+          <div>
+            <label>Week</label>
+            <input id="week" type="number" value="1" min="1" max="18" />
+          </div>
+        </div>
+
+        <p class="muted">Select your starting lineup for the week. Each position must be filled!</p>
+
+        <div id="pick-form" class="picks-grid">
+          <!-- Pick slots will be generated here -->
+        </div>
+        
+        <div class="submit-section">
+          <button id="submit" class="submit-btn">Submit My Picks</button>
+          <div id="submit-status"></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>🏆 Leaderboard</h2>
+        <div id="leaderboard"></div>
+        <p class="muted">Rankings based on total picks submitted this season.</p>
+      </section>
     </div>
   </div>
-
-  <p class="muted">Only active players & teams playing this week should appear (filter on client with your CSVs if you want; this MVP pulls from DB as-is).</p>
-
-  <div id="pick-form" class="grid">
-    <!-- slots will be injected -->
-  </div>
-  <button id="submit">Submit Picks</button>
-  <div id="submit-status"></div>
-</section>
-
-<section class="card">
-  <h2>Leaderboard (total picks count as placeholder)</h2>
-  <div id="leaderboard"></div>
-  <p class="muted">Replace this with real points once you add the scoring job.</p>
-</section>
 
 <script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
+// Replace with your actual Supabase credentials
 const SUPABASE_URL = 'https://sbwcvlcherhybyzdbzka.supabase.co'
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNid2N2bGNoZXJoeWJ5emRiemthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NjEyNjksImV4cCI6MjA3MDMzNzI2OX0.zQg2YemO6TbFKRYlVfaIUdRzPVHn7kLnNQY1hoaitQs'
 
-const slots = ['QB','RB1','RB2','WR1','WR2','TE','FLEX','K','DEF']
-const flexPositions = new Set(['RB','WR','TE'])
+// Mock Supabase client for demonstration
+const mockSupabase = {
+  auth: {
+    getUser: async () => ({ data: { user: null } }),
+    signInWithOtp: async ({ email }) => {
+      // Simulate email verification
+      localStorage.setItem('mockUser', JSON.stringify({ id: 'mock-user-' + Date.now(), email }))
+      return { error: null }
+    },
+    signOut: async () => {
+      localStorage.removeItem('mockUser')
+      return { error: null }
+    }
+  },
+  from: (table) => ({
+    select: function(columns) {
+      return {
+        eq: () => this,
+        in: () => this,
+        order: () => this,
+        maybeSingle: async () => {
+          if (table === 'profiles') {
+            return { data: { handle: 'Player123' }, error: null }
+          }
+          return { data: null, error: null }
+        },
+        then: async (resolve) => {
+          // Mock data based on table
+          if (table === 'players') {
+            resolve({ 
+              data: this.generateMockPlayers(), 
+              error: null 
+            })
+          } else if (table === 'defenses') {
+            resolve({ 
+              data: this.generateMockDefenses(), 
+              error: null 
+            })
+          } else if (table === 'picks') {
+            resolve({ 
+              data: this.generateMockPicks(), 
+              error: null 
+            })
+          } else {
+            resolve({ data: [], error: null })
+          }
+        },
+        generateMockPlayers: function() {
+          const positions = { QB: 5, RB: 8, WR: 10, TE: 4, K: 4 }
+          const teams = ['KC', 'BUF', 'SF', 'DAL', 'GB', 'MIA', 'CIN', 'PHI']
+          const players = []
+          
+          Object.entries(positions).forEach(([pos, count]) => {
+            for (let i = 1; i <= count; i++) {
+              players.push({
+                gsis_id: `${pos}${i}_mock`,
+                display_name: `${pos} Player ${i}`,
+                team: teams[i % teams.length],
+                position: pos
+              })
+            }
+          })
+          return players
+        },
+        generateMockDefenses: function() {
+          const teams = ['KC', 'BUF', 'SF', 'DAL', 'GB', 'MIA', 'CIN', 'PHI', 'BAL', 'LAR']
+          return teams.map((team, i) => ({
+            def_id: `${team}_DEF`,
+            display_name: `${team} Defense`
+          }))
+        },
+        generateMockPicks: function() {
+          return [
+            { user_id: 'user1', season: 2025 },
+            { user_id: 'user2', season: 2025 },
+            { user_id: 'user1', season: 2025 }
+          ]
+        }
+      }
+    },
+    insert: async (data) => {
+      console.log('Mock insert:', data)
+      return { error: null }
+    }
+  })
+}
+
+// Use mock for demo, replace with real Supabase client
+const supabase = mockSupabase
+
+const slots = [
+  { key: 'QB', label: 'Quarterback', count: 1 },
+  { key: 'RB1', label: 'Running Back #1', count: 1 },
+  { key: 'RB2', label: 'Running Back #2', count: 1 },
+  { key: 'WR1', label: 'Wide Receiver #1', count: 1 },
+  { key: 'WR2', label: 'Wide Receiver #2', count: 1 },
+  { key: 'TE', label: 'Tight End', count: 1 },
+  { key: 'FLEX', label: 'Flex (RB/WR/TE)', count: 1 },
+  { key: 'K', label: 'Kicker', count: 1 },
+  { key: 'DEF', label: 'Defense/ST', count: 1 }
+]
+
+const flexPositions = new Set(['RB', 'WR', 'TE'])
 
 const authEl = document.getElementById('auth')
+const mainContentEl = document.getElementById('main-content')
 const formEl = document.getElementById('pick-form')
 const submitBtn = document.getElementById('submit')
 const submitStatus = document.getElementById('submit-status')
@@ -68,142 +382,355 @@ const weekEl = document.getElementById('week')
 const leaderboardEl = document.getElementById('leaderboard')
 
 let currentUser = null
+let playersCache = {}
+
+// Initialize the app
 await refreshAuthUI()
 
-// --- NEW: helper to get handle ---
+// Helper to get user handle
 async function getHandle(userId) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('handle')
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (error) console.error(error)
-  return data?.handle || ''
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('handle')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (error) console.error('Error fetching handle:', error)
+    return data?.handle || 'Anonymous Player'
+  } catch (error) {
+    console.error('Error in getHandle:', error)
+    return 'Anonymous Player'
+  }
 }
 
-// -------- Auth -----------
+// Check for mock user in localStorage (for demo purposes)
+function getMockUser() {
+  const mockUser = localStorage.getItem('mockUser')
+  return mockUser ? JSON.parse(mockUser) : null
+}
+
+// Auth UI Management
 async function refreshAuthUI() {
-  const { data } = await supabase.auth.getUser()
-  currentUser = data.user
-  if (!currentUser) {
-    authEl.innerHTML = `
-      <input id="email" type="email" placeholder="you@example.com" />
-      <button id="signin">Send magic link</button>
-    `
-    document.getElementById('signin').onclick = async () => {
-      const email = document.getElementById('email').value
-      const { error } = await supabase.auth.signInWithOtp({ email })
-      alert(error ? error.message : 'Check your email for the sign-in link.')
-    }
-  } else {
-    const handle = await getHandle(currentUser.id)
-    authEl.innerHTML = `
-      <span>Signed in as ${handle || currentUser.email}</span>
-      <button id="signout">Sign out</button>
-    `
-    document.getElementById('signout').onclick = async () => {
-      await supabase.auth.signOut()
-      location.reload()
-    }
-    buildForm()
-    loadLeaderboard()
-  }
-}
-
-// -------- Data loaders -----
-async function loadPlayersByPosition(pos) {
-  if (pos === 'DEF') {
-    const { data, error } = await supabase.from('defenses').select('*').order('def_id')
-    if (error) throw error
-    return data.map(d => ({ id: d.def_id, label: d.display_name, pos: 'DEF' }))
-  }
-  const { data, error } = await supabase.from('players')
-    .select('gsis_id, display_name, team, position')
-    .eq('position', pos === 'FLEX' ? null : pos)
-    .order('team', { ascending: true })
-    .order('display_name', { ascending: true })
-  if (error) throw error
-  if (pos === 'FLEX') {
-    const { data: rbwrte, error: e2 } = await supabase.from('players')
-      .select('gsis_id, display_name, team, position')
-      .in('position', ['RB','WR','TE'])
-      .order('position').order('team').order('display_name')
-    if (e2) throw e2
-    return rbwrte.map(p => ({ id: p.gsis_id, label: `${p.display_name} (${p.team} ${p.position})`, pos: p.position }))
-  }
-  return data.map(p => ({ id: p.gsis_id, label: `${p.display_name} (${p.team})`, pos: p.position }))
-}
-
-// -------- Form -------------
-async function buildForm() {
-  formEl.innerHTML = ''
-  for (const slot of slots) {
-    const select = document.createElement('select')
-    select.id = `slot-${slot}`
-    select.innerHTML = `<option value="">-- choose ${slot} --</option>`
-    const pos = slot === 'DEF' ? 'DEF' : (slot === 'FLEX' ? 'FLEX' : slot.replace(/\d/,''))
-
-    const options = await loadPlayersByPosition(pos)
-    for (const o of options) {
-      const opt = document.createElement('option')
-      opt.value = o.id
-      opt.textContent = o.label
-      select.appendChild(opt)
-    }
-    const wrapper = document.createElement('div')
-    wrapper.innerHTML = `<label>${slot}</label>`
-    wrapper.appendChild(select)
-    formEl.appendChild(wrapper)
-  }
-}
-
-submitBtn.onclick = async () => {
-  if (!currentUser) return alert('Sign in first')
-  submitStatus.textContent = 'Submitting...'
-  const season = Number(seasonEl.value)
-  const week = Number(weekEl.value)
-
-  const payloads = []
-  for (const slot of slots) {
-    const val = document.getElementById(`slot-${slot}`).value
-    if (!val) return submitStatus.textContent = `Missing selection for ${slot}`
-    if (slot === 'DEF') {
-      payloads.push({ user_id: currentUser.id, season, week, slot, def_id: val, gsis_id: null })
+  try {
+    const { data } = await supabase.auth.getUser()
+    currentUser = data.user || getMockUser()
+    
+    if (!currentUser) {
+      authEl.innerHTML = `
+        <div class="auth-section">
+          <div class="auth-form">
+            <input id="email" type="email" placeholder="Enter your email address" style="min-width: 280px;" />
+            <button id="signin" type="button">Send Magic Link</button>
+            <p class="muted">For demo purposes, any email will work!</p>
+          </div>
+        </div>
+      `
+      
+      document.getElementById('signin').onclick = async () => {
+        const email = document.getElementById('email').value.trim()
+        if (!email) {
+          alert('Please enter an email address')
+          return
+        }
+        
+        const { error } = await supabase.auth.signInWithOtp({ email })
+        if (error) {
+          alert('Error: ' + error.message)
+        } else {
+          alert('Check your email for the sign-in link! (For demo, you\'re now logged in)')
+          // Auto-login for demo
+          setTimeout(() => {
+            location.reload()
+          }, 1000)
+        }
+      }
+      
+      mainContentEl.style.display = 'none'
     } else {
-      payloads.push({ user_id: currentUser.id, season, week, slot, gsis_id: val, def_id: null })
+      const handle = await getHandle(currentUser.id)
+      authEl.innerHTML = `
+        <div class="user-info">
+          <span style="font-weight: 600; color: #2d3748;">
+            Welcome, ${handle}! 👋
+          </span>
+          <button id="signout" type="button">Sign Out</button>
+        </div>
+      `
+      
+      document.getElementById('signout').onclick = async () => {
+        await supabase.auth.signOut()
+        location.reload()
+      }
+      
+      mainContentEl.style.display = 'block'
+      await buildForm()
+      await loadLeaderboard()
     }
+  } catch (error) {
+    console.error('Error in refreshAuthUI:', error)
+    authEl.innerHTML = '<p class="error">Error loading authentication. Please refresh the page.</p>'
   }
+}
 
-  const used = new Set()
-  for (const p of payloads) {
-    const id = p.gsis_id || p.def_id
-    if (used.has(id) && p.slot !== 'FLEX') return submitStatus.textContent = 'Duplicate player selected'
-    used.add(id)
+// Load players by position
+async function loadPlayersByPosition(position) {
+  try {
+    if (playersCache[position]) {
+      return playersCache[position]
+    }
+    
+    if (position === 'DEF') {
+      const { data, error } = await supabase
+        .from('defenses')
+        .select('*')
+        .order('def_id')
+      
+      if (error) throw error
+      
+      const players = data.map(d => ({
+        id: d.def_id,
+        label: d.display_name,
+        pos: 'DEF'
+      }))
+      
+      playersCache[position] = players
+      return players
+    }
+    
+    if (position === 'FLEX') {
+      const { data, error } = await supabase
+        .from('players')
+        .select('gsis_id, display_name, team, position')
+        .in('position', ['RB', 'WR', 'TE'])
+        .order('position')
+        .order('team')
+        .order('display_name')
+      
+      if (error) throw error
+      
+      const players = data.map(p => ({
+        id: p.gsis_id,
+        label: `${p.display_name} (${p.team} ${p.position})`,
+        pos: p.position
+      }))
+      
+      playersCache[position] = players
+      return players
+    }
+    
+    // Regular position
+    const { data, error } = await supabase
+      .from('players')
+      .select('gsis_id, display_name, team, position')
+      .eq('position', position)
+      .order('team')
+      .order('display_name')
+    
+    if (error) throw error
+    
+    const players = data.map(p => ({
+      id: p.gsis_id,
+      label: `${p.display_name} (${p.team})`,
+      pos: p.position
+    }))
+    
+    playersCache[position] = players
+    return players
+  } catch (error) {
+    console.error(`Error loading players for position ${position}:`, error)
+    return []
   }
+}
 
-  const { error } = await supabase.from('picks').insert(payloads)
-  if (error) {
-    submitStatus.textContent = error.message
-  } else {
-    submitStatus.textContent = 'Saved!'
+// Build the pick form
+async function buildForm() {
+  try {
+    formEl.innerHTML = '<div class="loading">Loading players...</div>'
+    
+    const slotElements = []
+    
+    for (const slot of slots) {
+      const position = slot.key === 'DEF' ? 'DEF' : 
+                     slot.key === 'FLEX' ? 'FLEX' : 
+                     slot.key.replace(/\d/, '')
+      
+      const players = await loadPlayersByPosition(position)
+      
+      const select = document.createElement('select')
+      select.id = `slot-${slot.key}`
+      select.required = true
+      
+      // Add default option
+      const defaultOption = document.createElement('option')
+      defaultOption.value = ''
+      defaultOption.textContent = `-- Select ${slot.label} --`
+      select.appendChild(defaultOption)
+      
+      // Add player options
+      players.forEach(player => {
+        const option = document.createElement('option')
+        option.value = player.id
+        option.textContent = player.label
+        select.appendChild(option)
+      })
+      
+      const slotDiv = document.createElement('div')
+      slotDiv.className = 'pick-slot'
+      slotDiv.innerHTML = `
+        <label class="position-label">${slot.label}</label>
+      `
+      slotDiv.appendChild(select)
+      
+      slotElements.push(slotDiv)
+    }
+    
+    formEl.innerHTML = ''
+    slotElements.forEach(el => formEl.appendChild(el))
+    
+  } catch (error) {
+    console.error('Error building form:', error)
+    formEl.innerHTML = '<div class="error">Error loading form. Please refresh the page.</div>'
+  }
+}
+
+// Submit picks
+submitBtn.onclick = async () => {
+  if (!currentUser) {
+    alert('Please sign in first')
+    return
+  }
+  
+  try {
+    submitBtn.disabled = true
+    submitStatus.innerHTML = '<div class="status loading">Submitting your picks...</div>'
+    
+    const season = Number(seasonEl.value)
+    const week = Number(weekEl.value)
+    
+    if (!season || !week) {
+      throw new Error('Please enter valid season and week numbers')
+    }
+    
+    const picks = []
+    const usedPlayers = new Set()
+    const flexUsedPlayers = new Set()
+    
+    // Validate and collect picks
+    for (const slot of slots) {
+      const selectEl = document.getElementById(`slot-${slot.key}`)
+      const value = selectEl.value.trim()
+      
+      if (!value) {
+        throw new Error(`Please select a ${slot.label}`)
+      }
+      
+      // Check for duplicates (except FLEX can reuse RB/WR/TE that aren't in starting lineup)
+      if (slot.key !== 'FLEX') {
+        if (usedPlayers.has(value)) {
+          throw new Error(`You cannot use the same player in multiple non-flex positions`)
+        }
+        usedPlayers.add(value)
+        
+        // If this is a RB/WR/TE, also mark as unavailable for FLEX
+        const position = slot.key.replace(/\d/, '')
+        if (flexPositions.has(position)) {
+          flexUsedPlayers.add(value)
+        }
+      } else {
+        // FLEX position - cannot reuse players already selected
+        if (flexUsedPlayers.has(value)) {
+          throw new Error(`FLEX player is already used in another starting position`)
+        }
+      }
+      
+      const pick = {
+        user_id: currentUser.id,
+        season,
+        week,
+        slot: slot.key,
+        gsis_id: slot.key === 'DEF' ? null : value,
+        def_id: slot.key === 'DEF' ? value : null
+      }
+      
+      picks.push(pick)
+    }
+    
+    // Submit to database
+    const { error } = await supabase.from('picks').insert(picks)
+    
+    if (error) {
+      throw error
+    }
+    
+    submitStatus.innerHTML = '<div class="status success">✅ Picks submitted successfully!</div>'
     await loadLeaderboard()
+    
+  } catch (error) {
+    console.error('Error submitting picks:', error)
+    submitStatus.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`
+  } finally {
+    submitBtn.disabled = false
   }
 }
 
-// -------- Leaderboard ----------
+// Load leaderboard
 async function loadLeaderboard() {
-  const season = Number(seasonEl.value)
-  const { data, error } = await supabase
-    .from('picks')
-    .select('user_id, season', { count: 'exact', head: false })
-    .eq('season', season)
-  if (error) { leaderboardEl.textContent = error.message; return }
-
-  const counts = {}
-  for (const row of data) counts[row.user_id] = (counts[row.user_id] || 0) + 1
-  const items = Object.entries(counts).map(([user, c]) => `<li>${user.slice(0,8)}… — ${c} picks</li>`)
-  leaderboardEl.innerHTML = `<ul>${items.join('')}</ul>`
+  try {
+    const season = Number(seasonEl.value)
+    
+    const { data, error } = await supabase
+      .from('picks')
+      .select('user_id, season')
+      .eq('season', season)
+    
+    if (error) throw error
+    
+    // Count picks per user
+    const userCounts = {}
+    data.forEach(pick => {
+      userCounts[pick.user_id] = (userCounts[pick.user_id] || 0) + 1
+    })
+    
+    // Sort by pick count
+    const sortedUsers = Object.entries(userCounts)
+      .sort(([,a], [,b]) => b - a)
+    
+    if (sortedUsers.length === 0) {
+      leaderboardEl.innerHTML = '<p class="muted">No picks submitted yet for this season.</p>'
+      return
+    }
+    
+    // Get handles for users (simplified for demo)
+    const leaderboardItems = await Promise.all(
+      sortedUsers.map(async ([userId, count], index) => {
+        const handle = await getHandle(userId)
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`
+        
+        return `
+          <div class="leaderboard-item">
+            <span>${medal} ${handle}</span>
+            <span><strong>${count} picks</strong></span>
+          </div>
+        `
+      })
+    )
+    
+    leaderboardEl.innerHTML = `<div class="leaderboard-list">${leaderboardItems.join('')}</div>`
+    
+  } catch (error) {
+    console.error('Error loading leaderboard:', error)
+    leaderboardEl.innerHTML = '<p class="error">Error loading leaderboard</p>'
+  }
 }
+
+// Season/Week change handlers
+seasonEl.addEventListener('change', loadLeaderboard)
+weekEl.addEventListener('change', () => {
+  // Could load existing picks for the week here
+  console.log('Week changed to:', weekEl.value)
+})
+
 </script>
 </body>
 </html>
