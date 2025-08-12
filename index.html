@@ -341,37 +341,22 @@
     }
   }
 
-  // ---------- Leaderboard ----------
+  // Weekly leaderboard for the selected week
   async function loadLeaderboard() {
-    const season = Number(seasonEl.value)
-    // Simple counts by user (RLS on profiles prevents joining names here)
-    const { data, error } = await supabase
-      .from('picks')
-      .select('user_id')
-      .eq('season', season)
-    if (error) { leaderboardEl.innerHTML = '<p class="muted">Could not load leaderboard.</p>'; return }
-
-    const counts = new Map()
-    for (const r of data) counts.set(r.user_id, (counts.get(r.user_id)||0)+1)
-    const items = [...counts.entries()].sort((a,b) => b[1]-a[1])
-
-    if (items.length === 0) {
-      leaderboardEl.innerHTML = '<p class="muted">No picks submitted yet for this season.</p>'
-      return
-    }
-
-    leaderboardEl.innerHTML = '<div class="leaderboard-list"></div>'
-    const list = leaderboardEl.querySelector('.leaderboard-list')
-
-    let rank = 1
-    for (const [userId, cnt] of items) {
-      const label = `${rank<=3 ? ['🥇','🥈','🥉'][rank-1] : rank+'.'} ${userId.slice(0,8)}…`
-      const row = document.createElement('div')
-      row.className = 'leaderboard-item'
-      row.innerHTML = `<span>${label}</span><span><strong>${cnt} picks</strong></span>`
-      list.appendChild(row)
-      rank++
-    }
+    const season = Number(seasonEl.value);
+    const week = Number(weekEl.value);
+    const { data, error } = await supabase.rpc('get_weekly_leaderboard', { _season: season, _week: week });
+    if (error) { leaderboardEl.innerHTML = '<p class="muted">Could not load leaderboard.</p>'; return; }
+    if (!data?.length) { leaderboardEl.innerHTML = '<p class="muted">No scores yet for this week.</p>'; return; }
+    leaderboardEl.innerHTML = '<div class="leaderboard-list"></div>';
+    const list = leaderboardEl.querySelector('.leaderboard-list');
+    data.forEach((row, i) => {
+      const medal = ['🥇','🥈','🥉'][i] ?? `${i+1}.`;
+      const div = document.createElement('div');
+      div.className = 'leaderboard-item';
+      div.innerHTML = `<span>${medal} ${row.display_name}</span><span><strong>${row.total_points} pts</strong></span>`;
+      list.appendChild(div);
+    });
   }
 </script>
 </body>
