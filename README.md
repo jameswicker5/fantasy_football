@@ -2,7 +2,7 @@
 
 A modern, interactive fantasy football application where users can submit weekly picks and compete in season-long leaderboards. Built with vanilla JavaScript and Supabase for real-time data management.
 
-![Football Player](./football-player.png)
+![Football Player](./images/fantasy_football_logo.png)
 
 ## ✨ Features
 
