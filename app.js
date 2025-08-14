@@ -532,7 +532,7 @@ async function loadSeasonLeaderboard(season) {
   const { data, error } = await supabase.rpc('get_season_leaderboard', { 
     _season: season 
   })
-  
+  console.log('Season leaderboard data:', data)
   if (error) { 
     leaderboardEl.innerHTML = '<p class="muted">Could not load season leaderboard.</p>'
     updateDebugInfo(`get_season_leaderboard error: ${error.message}`)
