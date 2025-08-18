@@ -5,19 +5,97 @@ const SUPABASE_URL = 'https://zitmhrlmmxxzkwauhbfa.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppdG1ocmxtbXh4emt3YXVoYmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjExMzAsImV4cCI6MjA3MDQzNzEzMH0.grgX_2m3IEuK9Vfj5YvZGRr3dDaYVORT6rWxmoZ_rZ8'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// Configuration
+// Updated Configuration for 2025 NFL Season
 const DEADLINE_CONFIG = {
   default: {
     dayOfWeek: 4, // Thursday (0 = Sunday, 1 = Monday, etc.)
-    hour: 20,     // 8:00 PM
-    minute: 15    // 8:15 PM
+    hour: 19,     // 7:00 PM ET
+    minute: 0     // 7:00 PM ET exactly
   },
   weekOverrides: {
-    // Example: Week 12 might be on Wednesday due to Thanksgiving
-    // 12: { dayOfWeek: 3, hour: 18, minute: 0 }
+    // Week 1: First game is Thursday Sept 4 at 8:20 PM ET - deadline Tuesday Sept 3, 7:00 PM ET
+    1: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 2: First game is Thursday Sept 11 at 8:15 PM ET - deadline Tuesday Sept 10, 7:00 PM ET  
+    2: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 3: First game is Thursday Sept 18 at 8:15 PM ET - deadline Tuesday Sept 17, 7:00 PM ET
+    3: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 4: First game is Thursday Sept 25 at 8:15 PM ET - deadline Tuesday Sept 24, 7:00 PM ET
+    4: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 5: First game is Thursday Oct 2 at 8:15 PM ET - deadline Tuesday Oct 1, 7:00 PM ET
+    5: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 6: First game is Thursday Oct 9 at 8:15 PM ET - deadline Tuesday Oct 8, 7:00 PM ET
+    6: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 7: First game is Thursday Oct 16 at 8:15 PM ET - deadline Tuesday Oct 15, 7:00 PM ET
+    7: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 8: First game is Thursday Oct 23 at 8:15 PM ET - deadline Tuesday Oct 22, 7:00 PM ET
+    8: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 9: First game is Thursday Oct 30 at 8:15 PM ET - deadline Tuesday Oct 29, 7:00 PM ET
+    9: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 10: First game is Thursday Nov 6 at 8:15 PM ET - deadline Tuesday Nov 5, 7:00 PM ET
+    10: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 11: First game is Thursday Nov 13 at 8:15 PM ET - deadline Tuesday Nov 12, 7:00 PM ET
+    11: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 12: First game is Thursday Nov 20 at 8:15 PM ET - deadline Tuesday Nov 19, 7:00 PM ET
+    12: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 13 (Thanksgiving Week): First game is Thursday Nov 27 at 1:00 PM ET - deadline Tuesday Nov 26, 7:00 PM ET
+    13: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 14: First game is Thursday Dec 4 at 8:15 PM ET - deadline Tuesday Dec 3, 7:00 PM ET
+    14: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 15: First game is Thursday Dec 11 at 8:15 PM ET - deadline Tuesday Dec 10, 7:00 PM ET
+    15: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 16: First game is Thursday Dec 18 at 8:15 PM ET - deadline Tuesday Dec 17, 7:00 PM ET
+    16: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
+    
+    // Week 17 (Christmas Week): First game is Thursday Dec 25 at 1:00 PM ET - deadline Tuesday Dec 24, 7:00 PM ET
+    17: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET (Christmas Eve)
+    
+    // Week 18: Games on Saturday Jan 3/Sunday Jan 4 - deadline Thursday Jan 2, 7:00 PM ET
+    18: { dayOfWeek: 4, hour: 19, minute: 0 }  // Thursday 7:00 PM ET (day after New Year's Day)
   },
-  seasonStartMonth: 8, // September (0-indexed)
-  seasonStartDay: 1
+  seasonStartMonth: 8, // September (0-indexed, so 8 = September)
+  seasonStartDay: 1    // September 1st as reference point
+}
+
+// Precise deadline dates for 2025 NFL season
+function calculateWeekDeadline(season, week) {
+  // Define exact deadline dates for each week based on 2025 schedule
+  const weekDeadlines = {
+    1: new Date(season, 8, 3, 19, 0, 0),   // Tuesday Sept 3, 7:00 PM ET
+    2: new Date(season, 8, 10, 19, 0, 0),  // Tuesday Sept 10, 7:00 PM ET  
+    3: new Date(season, 8, 17, 19, 0, 0),  // Tuesday Sept 17, 7:00 PM ET
+    4: new Date(season, 8, 24, 19, 0, 0),  // Tuesday Sept 24, 7:00 PM ET
+    5: new Date(season, 9, 1, 19, 0, 0),   // Tuesday Oct 1, 7:00 PM ET
+    6: new Date(season, 9, 8, 19, 0, 0),   // Tuesday Oct 8, 7:00 PM ET
+    7: new Date(season, 9, 15, 19, 0, 0),  // Tuesday Oct 15, 7:00 PM ET
+    8: new Date(season, 9, 22, 19, 0, 0),  // Tuesday Oct 22, 7:00 PM ET
+    9: new Date(season, 9, 29, 19, 0, 0),  // Tuesday Oct 29, 7:00 PM ET
+    10: new Date(season, 10, 5, 19, 0, 0), // Tuesday Nov 5, 7:00 PM ET
+    11: new Date(season, 10, 12, 19, 0, 0), // Tuesday Nov 12, 7:00 PM ET
+    12: new Date(season, 10, 19, 19, 0, 0), // Tuesday Nov 19, 7:00 PM ET
+    13: new Date(season, 10, 26, 19, 0, 0), // Tuesday Nov 26, 7:00 PM ET (day after Thanksgiving)
+    14: new Date(season, 11, 3, 19, 0, 0),  // Tuesday Dec 3, 7:00 PM ET
+    15: new Date(season, 11, 10, 19, 0, 0), // Tuesday Dec 10, 7:00 PM ET
+    16: new Date(season, 11, 17, 19, 0, 0), // Tuesday Dec 17, 7:00 PM ET
+    17: new Date(season, 11, 24, 19, 0, 0), // Tuesday Dec 24, 7:00 PM ET (Christmas Eve)
+    18: new Date(season + 1, 0, 2, 19, 0, 0) // Thursday Jan 2, 2026, 7:00 PM ET
+  }
+  
+  return weekDeadlines[week] || null
 }
 
 const WARNING_THRESHOLDS = {
@@ -156,11 +234,31 @@ async function ensureProfile(userId, email) {
   }
 }
 
-// Deadline Management
+// Updated deadline management with precise 2025 NFL schedule
 function checkPicksDeadline(season, week) {
   const now = new Date()
   
-  // Use override if available, otherwise use default
+  // Use precise calculation for 2025 season
+  if (season === 2025) {
+    const deadline = calculateWeekDeadline(season, week)
+    if (deadline) {
+      const isLocked = now > deadline
+      const timeUntilDeadline = deadline - now
+      
+      return {
+        isLocked,
+        deadline,
+        timeUntilDeadline: Math.max(0, timeUntilDeadline),
+        config: { 
+          dayOfWeek: deadline.getDay(), 
+          hour: deadline.getHours(), 
+          minute: deadline.getMinutes() 
+        }
+      }
+    }
+  }
+  
+  // Fallback to original logic for other seasons
   const deadlineConfig = DEADLINE_CONFIG.weekOverrides[week] || DEADLINE_CONFIG.default
   
   // Calculate the target day of the given week in the season
