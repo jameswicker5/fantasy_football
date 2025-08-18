@@ -94,7 +94,7 @@ const DEADLINE_CONFIG = {
 // Precise deadline dates for 2025 NFL season (in ET)
 function calculateWeekDeadline(season, week) {
   const weekDeadlinesET = {
-    1: { m: 8,  d: 3,  h: 19, min: 0 },   // Tue Sept 3, 7:00 PM ET
+    1: { m: 8,  d: 4,  h: 19, min: 0 },   // Tue Sept 3, 7:00 PM ET
     2: { m: 8,  d: 10, h: 19, min: 0 },
     3: { m: 8,  d: 17, h: 19, min: 0 },
     4: { m: 8,  d: 24, h: 19, min: 0 },
@@ -128,7 +128,7 @@ const WARNING_THRESHOLDS = {
 }
 
 // NEW: open window (picks open 7 days before deadline)
-const OPEN_DAYS_BEFORE_DEADLINE = 7
+const OPEN_DAYS_BEFORE_DEADLINE = 21
 
 function updateDebugInfo(message) {
   const debugEl = document.getElementById('debug-info')
