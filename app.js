@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// TODO: replace with your project values
 const SUPABASE_URL = 'https://zitmhrlmmxxzkwauhbfa.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppdG1ocmxtbXh4emt3YXVoYmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjExMzAsImV4cCI6MjA3MDQzNzEzMH0.grgX_2m3IEuK9Vfj5YvZGRr3dDaYVORT6rWxmoZ_rZ8'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
