@@ -68,8 +68,8 @@ const DEADLINE_CONFIG = {
     minute: 0     // 7:00 PM ET exactly
   },
   weekOverrides: {
-    1: { dayOfWeek: 2, hour: 19, minute: 0 },  // Tue 7:00 PM ET
-    2: { dayOfWeek: 2, hour: 19, minute: 0 },
+    1: { dayOfWeek: 4, hour: 20, minute: 0 },  // Tue 7:00 PM ET
+    2: { dayOfWeek: 4, hour: 20, minute: 0 },
     3: { dayOfWeek: 2, hour: 19, minute: 0 },
     4: { dayOfWeek: 2, hour: 19, minute: 0 },
     5: { dayOfWeek: 2, hour: 19, minute: 0 },
