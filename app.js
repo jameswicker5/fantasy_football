@@ -5,6 +5,62 @@ const SUPABASE_URL = 'https://zitmhrlmmxxzkwauhbfa.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppdG1ocmxtbXh4emt3YXVoYmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjExMzAsImV4cCI6MjA3MDQzNzEzMH0.grgX_2m3IEuK9Vfj5YvZGRr3dDaYVORT6rWxmoZ_rZ8'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Timezone helpers (America/New_York precision)
+ *  These ensure our "local" deadline of 7:00 PM ET maps to the correct UTC instant,
+ *  including across DST transitions.
+ *  ────────────────────────────────────────────────────────────────────────── */
+const ET_TZ = 'America/New_York'
+
+function getTimeZoneOffsetMillis(date, timeZone) {
+  // How many milliseconds you add to 'date' to get the same wall-clock time in 'timeZone'
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+  const parts = dtf.formatToParts(date).reduce((acc, p) => {
+    acc[p.type] = p.value
+    return acc
+  }, {})
+  // The timeZone-rendered wall-clock interpreted as UTC
+  const asUTC = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  )
+  return asUTC - date.getTime()
+}
+
+function zonedTimeToUtc({ year, monthIndex, day, hour = 0, minute = 0, second = 0 }, timeZone) {
+  // Start with the intended wall-clock in UTC space
+  const utcCandidate = new Date(Date.UTC(year, monthIndex, day, hour, minute, second))
+  // Calculate offset between the zone's wall-clock and UTC
+  const offset = getTimeZoneOffsetMillis(utcCandidate, timeZone)
+  // Subtract offset to get the real instant
+  return new Date(utcCandidate.getTime() - offset)
+}
+
+function formatInET(date) {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: ET_TZ,
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date)
+}
+
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Deadlines (with open window)
+ *  ────────────────────────────────────────────────────────────────────────── */
+
 // Updated Configuration for 2025 NFL Season
 const DEADLINE_CONFIG = {
   default: {
@@ -13,96 +69,67 @@ const DEADLINE_CONFIG = {
     minute: 0     // 7:00 PM ET exactly
   },
   weekOverrides: {
-    // Week 1: First game is Thursday Sept 4 at 8:20 PM ET - deadline Tuesday Sept 3, 7:00 PM ET
-    1: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 2: First game is Thursday Sept 11 at 8:15 PM ET - deadline Tuesday Sept 10, 7:00 PM ET  
-    2: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 3: First game is Thursday Sept 18 at 8:15 PM ET - deadline Tuesday Sept 17, 7:00 PM ET
-    3: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 4: First game is Thursday Sept 25 at 8:15 PM ET - deadline Tuesday Sept 24, 7:00 PM ET
-    4: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 5: First game is Thursday Oct 2 at 8:15 PM ET - deadline Tuesday Oct 1, 7:00 PM ET
-    5: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 6: First game is Thursday Oct 9 at 8:15 PM ET - deadline Tuesday Oct 8, 7:00 PM ET
-    6: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 7: First game is Thursday Oct 16 at 8:15 PM ET - deadline Tuesday Oct 15, 7:00 PM ET
-    7: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 8: First game is Thursday Oct 23 at 8:15 PM ET - deadline Tuesday Oct 22, 7:00 PM ET
-    8: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 9: First game is Thursday Oct 30 at 8:15 PM ET - deadline Tuesday Oct 29, 7:00 PM ET
-    9: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 10: First game is Thursday Nov 6 at 8:15 PM ET - deadline Tuesday Nov 5, 7:00 PM ET
-    10: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 11: First game is Thursday Nov 13 at 8:15 PM ET - deadline Tuesday Nov 12, 7:00 PM ET
-    11: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 12: First game is Thursday Nov 20 at 8:15 PM ET - deadline Tuesday Nov 19, 7:00 PM ET
-    12: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 13 (Thanksgiving Week): First game is Thursday Nov 27 at 1:00 PM ET - deadline Tuesday Nov 26, 7:00 PM ET
-    13: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 14: First game is Thursday Dec 4 at 8:15 PM ET - deadline Tuesday Dec 3, 7:00 PM ET
-    14: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 15: First game is Thursday Dec 11 at 8:15 PM ET - deadline Tuesday Dec 10, 7:00 PM ET
-    15: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 16: First game is Thursday Dec 18 at 8:15 PM ET - deadline Tuesday Dec 17, 7:00 PM ET
-    16: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET
-    
-    // Week 17 (Christmas Week): First game is Thursday Dec 25 at 1:00 PM ET - deadline Tuesday Dec 24, 7:00 PM ET
-    17: { dayOfWeek: 2, hour: 19, minute: 0 }, // Tuesday 7:00 PM ET (Christmas Eve)
-    
-    // Week 18: Games on Saturday Jan 3/Sunday Jan 4 - deadline Thursday Jan 2, 7:00 PM ET
-    18: { dayOfWeek: 4, hour: 19, minute: 0 }  // Thursday 7:00 PM ET (day after New Year's Day)
+    1: { dayOfWeek: 2, hour: 19, minute: 0 },  // Tue 7:00 PM ET
+    2: { dayOfWeek: 2, hour: 19, minute: 0 },
+    3: { dayOfWeek: 2, hour: 19, minute: 0 },
+    4: { dayOfWeek: 2, hour: 19, minute: 0 },
+    5: { dayOfWeek: 2, hour: 19, minute: 0 },
+    6: { dayOfWeek: 2, hour: 19, minute: 0 },
+    7: { dayOfWeek: 2, hour: 19, minute: 0 },
+    8: { dayOfWeek: 2, hour: 19, minute: 0 },
+    9: { dayOfWeek: 2, hour: 19, minute: 0 },
+    10:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    11:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    12:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    13:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    14:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    15:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    16:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    17:{ dayOfWeek: 2, hour: 19, minute: 0 },
+    18:{ dayOfWeek: 4, hour: 19, minute: 0 }   // Thu 7:00 PM ET
   },
-  seasonStartMonth: 8, // September (0-indexed, so 8 = September)
-  seasonStartDay: 1    // September 1st as reference point
+  seasonStartMonth: 8, // September (0-indexed)
+  seasonStartDay: 1
 }
 
-// Precise deadline dates for 2025 NFL season
+// Precise deadline dates for 2025 NFL season (in ET)
 function calculateWeekDeadline(season, week) {
-  // Define exact deadline dates for each week based on 2025 schedule
-  const weekDeadlines = {
-    1: new Date(season, 8, 3, 19, 0, 0),   // Tuesday Sept 3, 7:00 PM ET
-    2: new Date(season, 8, 10, 19, 0, 0),  // Tuesday Sept 10, 7:00 PM ET  
-    3: new Date(season, 8, 17, 19, 0, 0),  // Tuesday Sept 17, 7:00 PM ET
-    4: new Date(season, 8, 24, 19, 0, 0),  // Tuesday Sept 24, 7:00 PM ET
-    5: new Date(season, 9, 1, 19, 0, 0),   // Tuesday Oct 1, 7:00 PM ET
-    6: new Date(season, 9, 8, 19, 0, 0),   // Tuesday Oct 8, 7:00 PM ET
-    7: new Date(season, 9, 15, 19, 0, 0),  // Tuesday Oct 15, 7:00 PM ET
-    8: new Date(season, 9, 22, 19, 0, 0),  // Tuesday Oct 22, 7:00 PM ET
-    9: new Date(season, 9, 29, 19, 0, 0),  // Tuesday Oct 29, 7:00 PM ET
-    10: new Date(season, 10, 5, 19, 0, 0), // Tuesday Nov 5, 7:00 PM ET
-    11: new Date(season, 10, 12, 19, 0, 0), // Tuesday Nov 12, 7:00 PM ET
-    12: new Date(season, 10, 19, 19, 0, 0), // Tuesday Nov 19, 7:00 PM ET
-    13: new Date(season, 10, 26, 19, 0, 0), // Tuesday Nov 26, 7:00 PM ET (day after Thanksgiving)
-    14: new Date(season, 11, 3, 19, 0, 0),  // Tuesday Dec 3, 7:00 PM ET
-    15: new Date(season, 11, 10, 19, 0, 0), // Tuesday Dec 10, 7:00 PM ET
-    16: new Date(season, 11, 17, 19, 0, 0), // Tuesday Dec 17, 7:00 PM ET
-    17: new Date(season, 11, 24, 19, 0, 0), // Tuesday Dec 24, 7:00 PM ET (Christmas Eve)
-    18: new Date(season + 1, 0, 2, 19, 0, 0) // Thursday Jan 2, 2026, 7:00 PM ET
+  const weekDeadlinesET = {
+    1: { m: 8,  d: 3,  h: 19, min: 0 },   // Tue Sept 3, 7:00 PM ET
+    2: { m: 8,  d: 10, h: 19, min: 0 },
+    3: { m: 8,  d: 17, h: 19, min: 0 },
+    4: { m: 8,  d: 24, h: 19, min: 0 },
+    5: { m: 9,  d: 1,  h: 19, min: 0 },   // Tue Oct 1
+    6: { m: 9,  d: 8,  h: 19, min: 0 },
+    7: { m: 9,  d: 15, h: 19, min: 0 },
+    8: { m: 9,  d: 22, h: 19, min: 0 },
+    9: { m: 9,  d: 29, h: 19, min: 0 },
+    10:{ m: 10, d: 5,  h: 19, min: 0 },   // Tue Nov 5
+    11:{ m: 10, d: 12, h: 19, min: 0 },
+    12:{ m: 10, d: 19, h: 19, min: 0 },
+    13:{ m: 10, d: 26, h: 19, min: 0 },   // Tue Nov 26
+    14:{ m: 11, d: 3,  h: 19, min: 0 },   // Tue Dec 3
+    15:{ m: 11, d: 10, h: 19, min: 0 },
+    16:{ m: 11, d: 17, h: 19, min: 0 },
+    17:{ m: 11, d: 24, h: 19, min: 0 },   // Tue Dec 24
+    18:{ m: 0,  d: 2,  h: 19, min: 0 }    // Thu Jan 2, 2026
   }
-  
-  return weekDeadlines[week] || null
+
+  if (season === 2025 && weekDeadlinesET[week]) {
+    const { m, d, h, min } = weekDeadlinesET[week]
+    return zonedTimeToUtc({ year: week === 18 ? season + 1 : season, monthIndex: m, day: d, hour: h, minute: min, second: 0 }, ET_TZ)
+  }
+  return null
 }
 
 const WARNING_THRESHOLDS = {
-  CRITICAL: 1000 * 60 * 30,    // 30 minutes
-  WARNING: 1000 * 60 * 60 * 2,  // 2 hours
-  NOTICE: 1000 * 60 * 60 * 24   // 24 hours
+  CRITICAL: 1000 * 60 * 30,     // 30 minutes
+  WARNING:  1000 * 60 * 60 * 2, // 2 hours
+  NOTICE:   1000 * 60 * 60 * 24 // 24 hours
 }
+
+// NEW: open window (picks open 7 days before deadline)
+const OPEN_DAYS_BEFORE_DEADLINE = 7
 
 function updateDebugInfo(message) {
   const debugEl = document.getElementById('debug-info')
@@ -234,78 +261,76 @@ async function ensureProfile(userId, email) {
   }
 }
 
-// Updated deadline management with precise 2025 NFL schedule
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Deadline checks (ET) + open window
+ *  ────────────────────────────────────────────────────────────────────────── */
 function checkPicksDeadline(season, week) {
   const now = new Date()
-  
-  // Use precise calculation for 2025 season
+
+  // Prefer precise hard-coded ET dates for 2025
+  let deadline = null
   if (season === 2025) {
-    const deadline = calculateWeekDeadline(season, week)
-    if (deadline) {
-      const isLocked = now > deadline
-      const timeUntilDeadline = deadline - now
-      
-      return {
-        isLocked,
-        deadline,
-        timeUntilDeadline: Math.max(0, timeUntilDeadline),
-        config: { 
-          dayOfWeek: deadline.getDay(), 
-          hour: deadline.getHours(), 
-          minute: deadline.getMinutes() 
-        }
-      }
+    deadline = calculateWeekDeadline(season, week)
+  }
+
+  // Fallback to computed schedule for other seasons (still in ET)
+  if (!deadline) {
+    const cfg = DEADLINE_CONFIG.weekOverrides[week] || DEADLINE_CONFIG.default
+    const seasonStart = new Date(season, DEADLINE_CONFIG.seasonStartMonth, DEADLINE_CONFIG.seasonStartDay)
+
+    // Find first Thursday of the season
+    const firstThursday = new Date(seasonStart)
+    const daysToFirstThursday = (DEADLINE_CONFIG.default.dayOfWeek - seasonStart.getDay() + 7) % 7
+    firstThursday.setDate(seasonStart.getDate() + daysToFirstThursday)
+
+    // Base date for this week
+    const base = new Date(firstThursday)
+    base.setDate(firstThursday.getDate() + (week - 1) * 7)
+
+    // If there's a week override for day-of-week, shift by the difference
+    if (DEADLINE_CONFIG.weekOverrides[week]) {
+      const daysDiff = cfg.dayOfWeek - DEADLINE_CONFIG.default.dayOfWeek
+      base.setDate(base.getDate() + daysDiff)
     }
+
+    // Construct ET deadline instant from calendar Y-M-D + ET time
+    deadline = zonedTimeToUtc({
+      year: base.getFullYear(),
+      monthIndex: base.getMonth(),
+      day: base.getDate(),
+      hour: cfg.hour,
+      minute: cfg.minute,
+      second: 0
+    }, ET_TZ)
   }
-  
-  // Fallback to original logic for other seasons
-  const deadlineConfig = DEADLINE_CONFIG.weekOverrides[week] || DEADLINE_CONFIG.default
-  
-  // Calculate the target day of the given week in the season
-  const seasonStart = new Date(season, DEADLINE_CONFIG.seasonStartMonth, DEADLINE_CONFIG.seasonStartDay)
-  
-  // Find the first Thursday of the season
-  const firstThursday = new Date(seasonStart)
-  const daysToFirstThursday = (DEADLINE_CONFIG.default.dayOfWeek - seasonStart.getDay() + 7) % 7
-  firstThursday.setDate(seasonStart.getDate() + daysToFirstThursday)
-  
-  // Calculate the deadline for the specific week
-  const deadline = new Date(firstThursday)
-  deadline.setDate(firstThursday.getDate() + (week - 1) * 7)
-  
-  // Adjust if this week has an override day
-  if (DEADLINE_CONFIG.weekOverrides[week]) {
-    const daysDiff = deadlineConfig.dayOfWeek - DEADLINE_CONFIG.default.dayOfWeek
-    deadline.setDate(deadline.getDate() + daysDiff)
-  }
-  
-  deadline.setHours(deadlineConfig.hour, deadlineConfig.minute, 0, 0)
-  
+
+  // Opening time is OPEN_DAYS_BEFORE_DEADLINE days before the deadline (in ET)
+  const openTime = new Date(deadline.getTime() - OPEN_DAYS_BEFORE_DEADLINE * 24 * 60 * 60 * 1000)
+
+  const isBeforeOpen = now < openTime
   const isLocked = now > deadline
-  const timeUntilDeadline = deadline - now
-  
+  const timeUntilOpen = Math.max(0, openTime - now)
+  const timeUntilDeadline = Math.max(0, deadline - now)
+
   return {
+    isBeforeOpen,
     isLocked,
     deadline,
-    timeUntilDeadline: Math.max(0, timeUntilDeadline),
-    config: deadlineConfig
+    openTime,
+    timeUntilOpen,
+    timeUntilDeadline
   }
 }
 
 function formatTimeRemaining(milliseconds) {
-  if (milliseconds <= 0) return 'Deadline passed'
-  
+  if (milliseconds <= 0) return '0m'
   const days = Math.floor(milliseconds / (1000 * 60 * 60 * 24))
   const hours = Math.floor((milliseconds % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60))
-  
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`
-  } else if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  } else {
-    return `${minutes}m`
-  }
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
 function getDeadlineWarningLevel(timeUntilDeadline) {
@@ -317,53 +342,71 @@ function getDeadlineWarningLevel(timeUntilDeadline) {
 }
 
 function updateDeadlineInfo(season, week) {
-  const { isLocked, deadline, timeUntilDeadline } = checkPicksDeadline(season, week)
+  const { isBeforeOpen, isLocked, deadline, openTime, timeUntilOpen, timeUntilDeadline } = checkPicksDeadline(season, week)
   const warningLevel = getDeadlineWarningLevel(timeUntilDeadline)
-  
+
+  if (isBeforeOpen) {
+    deadlineInfoEl.innerHTML = `
+      <div class="locked">
+        🔒 <strong>Picks Not Open</strong><br>
+        Opens (ET): ${formatInET(openTime)}<br>
+        Time until open: ${formatTimeRemaining(timeUntilOpen)}
+      </div>
+    `
+    deadlineInfoEl.className = 'deadline-info locked'
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Picks Not Open'
+    return
+  }
+
   if (isLocked) {
     deadlineInfoEl.innerHTML = `
       <div class="locked">
         🔒 <strong>Picks Locked</strong><br>
-        Deadline was ${deadline.toLocaleDateString()} at ${deadline.toLocaleTimeString()}
+        Deadline (ET): ${formatInET(deadline)}
       </div>
     `
     deadlineInfoEl.className = 'deadline-info locked'
     submitBtn.disabled = true
     submitBtn.textContent = 'Picks Locked'
-  } else {
-    const timeStr = formatTimeRemaining(timeUntilDeadline)
-    let icon = '⏰'
-    let statusText = 'Picks Open'
-    
-    switch (warningLevel) {
-      case 'critical':
-        icon = '🚨'
-        statusText = 'Deadline Soon!'
-        break
-      case 'warning':
-        icon = '⚠️'
-        statusText = 'Deadline Approaching'
-        break
-      case 'notice':
-        icon = '📅'
-        statusText = 'Deadline Tomorrow'
-        break
-    }
-    
-    deadlineInfoEl.innerHTML = `
-      <div class="open">
-        ${icon} <strong>${statusText}</strong><br>
-        Deadline: ${deadline.toLocaleDateString()} at ${deadline.toLocaleTimeString()}<br>
-        Time remaining: ${timeStr}
-      </div>
-    `
-    deadlineInfoEl.className = `deadline-info open ${warningLevel}`
-    submitBtn.disabled = false
-    submitBtn.textContent = 'Submit My Picks'
+    return
   }
+
+  // OPEN
+  const timeStr = formatTimeRemaining(timeUntilDeadline)
+  let icon = '⏰'
+  let statusText = 'Picks Open'
+
+  switch (warningLevel) {
+    case 'critical':
+      icon = '🚨'
+      statusText = 'Deadline Soon!'
+      break
+    case 'warning':
+      icon = '⚠️'
+      statusText = 'Deadline Approaching'
+      break
+    case 'notice':
+      icon = '📅'
+      statusText = 'Deadline Tomorrow'
+      break
+  }
+
+  deadlineInfoEl.innerHTML = `
+    <div class="open">
+      ${icon} <strong>${statusText}</strong><br>
+      Deadline (ET): ${formatInET(deadline)}<br>
+      Time remaining: ${timeStr}
+    </div>
+  `
+  deadlineInfoEl.className = `deadline-info open ${warningLevel}`
+  submitBtn.disabled = false
+  submitBtn.textContent = 'Submit My Picks'
 }
 
-// Data helpers
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Data helpers
+ *  ────────────────────────────────────────────────────────────────────────── */
 async function buildTeamIndex() {
   const { data, error } = await supabase.from('teams').select('id, abbr')
   if (error) { 
@@ -386,7 +429,9 @@ async function fetchEligible(season, week) {
   return data
 }
 
-// Event Listeners
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Event Listeners
+ *  ────────────────────────────────────────────────────────────────────────── */
 seasonEl.addEventListener('change', async () => { 
   await buildForm()
   await loadMyWeekPoints()
@@ -399,15 +444,17 @@ weekEl.addEventListener('change', async () => {
   await loadLeaderboard()
 })
 
-// Form Management
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Form Management
+ *  ────────────────────────────────────────────────────────────────────────── */
 async function buildForm() {
   formEl.innerHTML = '<div class="status loading">Loading eligible players…</div>'
   const season = Number(seasonEl.value)
   const week = Number(weekEl.value)
-  
-  // Update deadline info
+
+  // Update deadline info (uses ET + open window)
   updateDeadlineInfo(season, week)
-  
+
   eligibleCache = await fetchEligible(season, week)
 
   const byPos = new Map()
@@ -463,15 +510,21 @@ async function buildForm() {
   slotEls.forEach(el => formEl.appendChild(el))
 }
 
-// Submit picks
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Submit picks (guards for open window + deadline)
+ *  ────────────────────────────────────────────────────────────────────────── */
 submitBtn.onclick = async () => {
   if (!currentUser) return alert('Please sign in first')
 
   const season = Number(seasonEl.value)
   const week = Number(weekEl.value)
   
-  // Check deadline
-  const { isLocked } = checkPicksDeadline(season, week)
+  // Guard both "not open yet" and "deadline passed"
+  const { isBeforeOpen, isLocked } = checkPicksDeadline(season, week)
+  if (isBeforeOpen) {
+    alert('Picks are not open yet for this week.')
+    return
+  }
   if (isLocked) {
     alert('Picks are locked for this week. The deadline has passed.')
     return
@@ -519,7 +572,9 @@ submitBtn.onclick = async () => {
   }
 }
 
-// My Week Points
+/** ──────────────────────────────────────────────────────────────────────────
+ *  My Week Points
+ *  ────────────────────────────────────────────────────────────────────────── */
 async function loadMyWeekPoints() {
   const season = Number(seasonEl.value)
   const week = Number(weekEl.value)
@@ -566,7 +621,9 @@ async function loadMyWeekPoints() {
   totalEl.textContent = `Week ${week} total: ${total.toFixed(2)} pts`
 }
 
-// Leaderboard Tabs
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Leaderboard Tabs
+ *  ────────────────────────────────────────────────────────────────────────── */
 weeklyTabEl.onclick = () => {
   currentLeaderboardTab = 'weekly'
   weeklyTabEl.classList.add('active')
@@ -581,7 +638,9 @@ seasonTabEl.onclick = () => {
   loadLeaderboard()
 }
 
-// Leaderboard
+/** ──────────────────────────────────────────────────────────────────────────
+ *  Leaderboard
+ *  ────────────────────────────────────────────────────────────────────────── */
 async function loadLeaderboard() {
   const season = Number(seasonEl.value)
   const week = Number(weekEl.value)
@@ -626,10 +685,7 @@ async function loadWeeklyLeaderboard(season, week) {
 }
 
 async function loadSeasonLeaderboard(season) {
-  // Updated to use RPC function for season total points
-  const { data, error } = await supabase.rpc('get_season_leaderboard', { 
-    _season: season 
-  })
+  const { data, error } = await supabase.rpc('get_season_leaderboard', { _season: season })
   console.log('Season leaderboard data:', data)
   if (error) { 
     leaderboardEl.innerHTML = '<p class="muted">Could not load season leaderboard.</p>'
