@@ -68,8 +68,8 @@ const DEADLINE_CONFIG = {
     minute: 0     // 7:00 PM ET exactly
   },
   weekOverrides: {
-    1: { dayOfWeek: 4, hour: 20, minute: 0 },  // Tue 7:00 PM ET
-    2: { dayOfWeek: 4, hour: 20, minute: 0 },
+    1: { dayOfWeek: 2, hour: 19, minute: 0 },  // Tue 7:00 PM ET
+    2: { dayOfWeek: 2, hour: 19, minute: 0 },
     3: { dayOfWeek: 2, hour: 19, minute: 0 },
     4: { dayOfWeek: 2, hour: 19, minute: 0 },
     5: { dayOfWeek: 2, hour: 19, minute: 0 },
@@ -94,24 +94,24 @@ const DEADLINE_CONFIG = {
 // Precise deadline dates for 2025 NFL season (in ET)
 function calculateWeekDeadline(season, week) {
   const weekDeadlinesET = {
-    1: { m: 8,  d: 4,  h: 19, min: 0 },   // Tue Sept 3, 7:00 PM ET
-    2: { m: 8,  d: 10, h: 19, min: 0 },
-    3: { m: 8,  d: 17, h: 19, min: 0 },
-    4: { m: 8,  d: 24, h: 19, min: 0 },
-    5: { m: 9,  d: 1,  h: 19, min: 0 },   // Tue Oct 1
-    6: { m: 9,  d: 8,  h: 19, min: 0 },
-    7: { m: 9,  d: 15, h: 19, min: 0 },
-    8: { m: 9,  d: 22, h: 19, min: 0 },
-    9: { m: 9,  d: 29, h: 19, min: 0 },
-    10:{ m: 10, d: 5,  h: 19, min: 0 },   // Tue Nov 5
-    11:{ m: 10, d: 12, h: 19, min: 0 },
-    12:{ m: 10, d: 19, h: 19, min: 0 },
-    13:{ m: 10, d: 26, h: 19, min: 0 },   // Tue Nov 26
-    14:{ m: 11, d: 3,  h: 19, min: 0 },   // Tue Dec 3
-    15:{ m: 11, d: 10, h: 19, min: 0 },
-    16:{ m: 11, d: 17, h: 19, min: 0 },
-    17:{ m: 11, d: 24, h: 19, min: 0 },   // Tue Dec 24
-    18:{ m: 0,  d: 2,  h: 19, min: 0 }    // Thu Jan 2, 2026
+    1: { m: 8,  d: 4,  h: 20, min: 0 },   // Tue Sept 3, 7:00 PM ET
+    2: { m: 8,  d: 11, h: 20, min: 0 },
+    3: { m: 8,  d: 18, h: 20, min: 0 },
+    4: { m: 8,  d: 25, h: 19, min: 0 },
+    5: { m: 9,  d: 2,  h: 19, min: 0 },   // Tue Oct 1
+    6: { m: 9,  d: 9,  h: 20, min: 0 },
+    7: { m: 9,  d: 16, h: 20, min: 0 },
+    8: { m: 9,  d: 23, h: 20, min: 0 },
+    9: { m: 9,  d: 30, h: 20, min: 0 },
+    10:{ m: 10, d: 6,  h: 20, min: 0 },   // Tue Nov 5
+    11:{ m: 10, d: 13, h: 20, min: 0 },
+    12:{ m: 10, d: 20, h: 20, min: 0 },
+    13:{ m: 10, d: 27, h: 12, min: 0 },   // Tue Nov 26
+    14:{ m: 11, d: 4,  h: 20, min: 0 },   // Tue Dec 3
+    15:{ m: 11, d: 11, h: 20, min: 0 },
+    16:{ m: 11, d: 18, h: 20, min: 0 },
+    17:{ m: 11, d: 25, h: 12, min: 0 },   // Tue Dec 24
+    18:{ m: 0,  d: 3,  h: 12, min: 0 }    // Thu Jan 2, 2026
   }
 
   if (season === 2025 && weekDeadlinesET[week]) {
